@@ -212,32 +212,88 @@ document.addEventListener('DOMContentLoaded', function() {
     document.head.appendChild(style);
 
     if (suggestionForm && suggestionBtn) {
-        // Set the correct form action with full URL
-        const baseUrl = window.location.origin;
-        const contextPath = window.location.pathname.split('/')[1] || '';
-        const servletUrl = `${baseUrl}/${contextPath}/suggestion`;
-        suggestionForm.action = servletUrl;
-        suggestionForm.method = 'post';
-        console.log('Form action set to:', suggestionForm.action);
-
-        // Handle modal toggle
+        // Handle suggestion button click - open form in new tab
         suggestionBtn.addEventListener('click', function() {
-            toggleSuggestionModal();
+            const contextPath = window.location.pathname.split('/')[1] || '';
+            window.open(`/${contextPath}/suggestion`, '_blank');
         });
 
-        // Handle form submission
-        suggestionForm.addEventListener('submit', function(e) {
-            const suggestionInput = document.getElementById('suggestion');
-            const suggestionValue = suggestionInput.value.trim();
-
-            if (suggestionValue) {
-                // Let the form submit naturally to the servlet URL
-                return true;
-            } else {
+        // Handle form submission - stay in same tab
+        if (suggestionForm) {
+            suggestionForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
-                alert('Please enter a suggestion before submitting');
-            }
-        });
+                
+                const suggestionInput = document.getElementById('suggestion');
+                const suggestionValue = suggestionInput.value.trim();
+
+                if (!suggestionValue) {
+                    alert('Please enter a suggestion before submitting');
+                    return;
+                }
+
+                try {
+                    const contextPath = window.location.pathname.split('/')[1] || '';
+                    const servletUrl = `/${contextPath}/suggestion`;
+
+                    const response = await fetch(servletUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `suggestion=${encodeURIComponent(suggestionValue)}`
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to save suggestion');
+                    }
+
+                    // Show success message
+                    const modal = document.getElementById('suggestionModal');
+                    modal.innerHTML = `
+                        <div class="modal-content">
+                            <div class="thank-you-icon" onclick="toggleSuggestionModal()">✓</div>
+                            <h1 class="thank-you-title">Thank You!</h1>
+                            <div class="suggestion-box">
+                                <p class="suggestion-text">We received your suggestion: <strong>${suggestionValue}</strong></p>
+                            </div>
+                        </div>
+                    `;
+
+                    // Clear the form
+                    suggestionInput.value = '';
+
+                    // Close modal after 3 seconds
+                    setTimeout(() => {
+                        toggleSuggestionModal();
+                        // Reset modal content after closing
+                        setTimeout(() => {
+                            modal.innerHTML = `
+                                <div class="modal-content">
+                                    <button class="close-btn" onclick="toggleSuggestionModal()">×</button>
+                                    <div class="modal-header">
+                                        <h2>Submit Your Suggestion</h2>
+                                        <p>Share your favorite cars, events, and track experiences</p>
+                                    </div>
+                                    <form id="suggestionForm">
+                                        <div class="form-group">
+                                            <label for="suggestion">Your suggestion:</label>
+                                            <input type="text" id="suggestion" name="suggestion" required>
+                                        </div>
+                                        <div class="modal-actions">
+                                            <button type="submit" class="btn btn-primary">Submit</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            `;
+                        }, 300);
+                    }, 3000);
+
+                } catch (error) {
+                    console.error('Error submitting suggestion:', error);
+                    alert('Failed to submit suggestion. Please try again.');
+                }
+            });
+        }
     }
 });
 
