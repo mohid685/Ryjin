@@ -663,7 +663,7 @@
     </form>
 
     <div class="suggestion-link-container">
-        <a href="/RyjinWebApp/suggestion" target="_blank" class="btn btn-outline suggestion-btn">SUGGEST A NEW CAR/EVENT</a>
+        <a href="/RyjinWebApp/suggestion" class="btn btn-outline suggestion-btn">SUGGEST A NEW CAR/EVENT</a>
     </div>
 </div>
 
@@ -772,6 +772,61 @@
             // Initialize racing feed after animation
             initRacingFeed();
         }, 4500);
+    });
+
+    // Add this before the existing DOMContentLoaded event listener
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.roomId) {
+            // Restore the room state
+            const roomId = event.state.roomId;
+            const roomName = event.state.roomName;
+            showChatRoom(roomId, roomName);
+        } else {
+            // If no room state, show dashboard
+            showDashboard();
+        }
+    });
+
+    // Modify the showChatRoom function to use History API
+    function showChatRoom(roomId, roomName) {
+        // Push the room state to history
+        const state = {
+            roomId: roomId,
+            roomName: roomName
+        };
+        history.pushState(state, '', `/RyjinWebApp/chat?room=${roomId}`);
+        
+        // Show chat container and hide others
+        document.getElementById('authContainer').classList.add('hidden');
+        document.getElementById('dashboardContainer').classList.add('hidden');
+        document.getElementById('chatContainer').classList.remove('hidden');
+        
+        // Update room name display
+        document.getElementById('roomName').textContent = roomName;
+        
+        // Initialize chat room
+        initializeChatRoom(roomId);
+    }
+
+    // Add this function to handle initial page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if we're in a chat room
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+        const roomName = urlParams.get('name');
+        
+        if (roomId && roomName) {
+            // Restore room state
+            const state = {
+                roomId: roomId,
+                roomName: roomName
+            };
+            history.replaceState(state, '', `/RyjinWebApp/chat?room=${roomId}`);
+            showChatRoom(roomId, roomName);
+        }
+        
+        // Rest of your existing DOMContentLoaded code...
     });
 </script>
 
