@@ -1,0 +1,689 @@
+// WebSocket connection
+let socket = null;
+let currentUser = null;
+let currentRoom = null;
+
+// DOM Elements
+const authContainer = document.getElementById('authContainer');
+const dashboardContainer = document.getElementById('dashboardContainer');
+const chatContainer = document.getElementById('chatContainer');
+const usernameDisplay = document.getElementById('username');
+const roomsList = document.getElementById('roomsList');
+const messagesContainer = document.getElementById('messagesContainer');
+const messageForm = document.getElementById('messageForm');
+const messageInput = document.getElementById('messageInput');
+const roomName = document.getElementById('roomName');
+const participantCount = document.getElementById('participantCount');
+const createRoomModal = document.getElementById('createRoomModal');
+const createRoomForm = document.getElementById('createRoomForm');
+const cancelCreateRoomBtn = document.getElementById('cancelCreateRoom');
+const createRoomBtn = document.getElementById('createRoomBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const leaveRoomBtn = document.getElementById('leaveRoomBtn');
+
+// Auth Forms
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const tabBtns = document.querySelectorAll('.tab-btn');
+
+// Initialize WebSocket connection
+function connectWebSocket() {
+  // Use the correct websocket URL format
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
+
+  socket.onopen = () => {
+      console.log('Connected to server');
+  };
+
+  socket.onmessage = (event) => {
+      const message = event.data;
+      console.log('Received:', message);
+
+      if (message.includes('Login successful')) {
+          currentUser = { username: document.getElementById('loginUsername').value };
+          showDashboard();
+      } else if (message.includes('Registration successful')) {
+          alert('Registration successful! Please login.');
+          showLoginTab();
+      } else if (message.includes('Available rooms:')) {
+          // Parse room list
+          const rooms = [];
+          const lines = message.split('\n');
+          for (let i = 1; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.startsWith('-')) {
+                  const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
+                  if (match) {
+                      rooms.push({ name: match[1], createdBy: match[2] });
+                  }
+              }
+          }
+          displayRooms(rooms);
+      } else if (message.includes('Room created successfully')) {
+          hideCreateRoomModal();
+          currentRoom = { name: document.getElementById('roomNameInput').value };
+          showChatRoom(currentRoom.name);
+      } else if (message.includes('=== Chat Room:')) {
+          const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
+          if (roomNameMatch) {
+              currentRoom = { name: roomNameMatch[1] };
+              showChatRoom(currentRoom.name);
+          }
+          addMessage(message);
+      } else {
+          addMessage(message);
+      }
+  };
+
+  socket.onclose = () => {
+      console.log('Disconnected from server');
+      setTimeout(connectWebSocket, 3000);
+  };
+}
+
+// Auth functions
+loginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+
+  // Send login as a single message with format "1.username.password"
+  socket.send(`1.${username}.${password}`);
+});
+
+registerForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const username = document.getElementById('registerUsername').value;
+  const password = document.getElementById('registerPassword').value;
+
+  // Send registration as a single message with format "2.username.password"
+  socket.send(`2.${username}.${password}`);
+});
+
+// Room management
+createRoomBtn.addEventListener('click', () => {
+  createRoomModal.classList.remove('hidden');
+});
+
+cancelCreateRoomBtn.addEventListener('click', () => {
+  hideCreateRoomModal();
+});
+
+createRoomForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const roomNameInput = document.getElementById('roomNameInput');
+  const newRoomName = roomNameInput.value.trim();
+
+  if (newRoomName) {
+      // Send create room command with the room name
+      socket.send(`create:${newRoomName}`);
+      roomNameInput.value = '';
+  }
+});
+
+function hideCreateRoomModal() {
+  createRoomModal.classList.add('hidden');
+  document.getElementById('roomNameInput').value = '';
+}
+
+// Navigation
+logoutBtn.addEventListener('click', () => {
+  socket.close();
+  currentUser = null;
+  currentRoom = null;
+  showLoginTab();
+  authContainer.classList.remove('hidden');
+  dashboardContainer.classList.add('hidden');
+  chatContainer.classList.add('hidden');
+  connectWebSocket(); // Reconnect with fresh connection
+});
+
+leaveRoomBtn.addEventListener('click', () => {
+  socket.send('/exit');
+  currentRoom = null;
+  showDashboard();
+});
+
+// Tab switching
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      tabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (tab === 'login') {
+          loginForm.classList.remove('hidden');
+          registerForm.classList.add('hidden');
+      } else {
+          loginForm.classList.add('hidden');
+          registerForm.classList.remove('hidden');
+      }
+  });
+});
+
+function displayRooms(rooms) {
+  roomsList.innerHTML = rooms.map((room, index) => `
+      <div class="room-card" onclick="joinRoom(${index + 1})">
+          <h3>${room.name}</h3>
+      </div>
+  `).join('');
+}
+
+function joinRoom(roomNumber) {
+  // Send join command with room number
+  socket.send(`join:${roomNumber}`);
+}
+
+// Message handling
+messageForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const message = messageInput.value.trim();
+
+  if (message) {
+      socket.send(message);
+      messageInput.value = '';
+  }
+});
+
+function addMessage(message) {
+    // Skip system messages and notifications
+    if (message.includes('Welcome to GTR Chat Server!') ||
+        message.includes('Joined room:') ||
+        message.includes('=== Chat Room:') ||
+        message.includes('You joined at:') ||
+        message.includes('Type \'/exit\' to leave the room') ||
+        message.includes('--- Chat History') ||
+        message.startsWith('[SYSTEM]')) {
+        return;
+    }
+
+    // Only process messages that look like actual user messages
+    // They should contain a colon after the username
+    if (!message.includes(':')) {
+        return;
+    }
+
+    const messageElement = document.createElement('div');
+    messageElement.className = 'message other';
+
+    // Clean the message by removing timestamps and any non-printable characters
+    let cleanMessage = message
+        .replace(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\]/g, '') // Remove timestamps
+        .replace(/[^\x20-\x7E]/g, '') // Remove non-printable characters
+        .trim();
+
+    // Only process if the message is not empty after cleaning
+    if (cleanMessage) {
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = 'message-wrapper';
+        
+        const personAvatar = document.createElement('div');
+        personAvatar.className = 'person-avatar';
+        
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        messageContent.textContent = cleanMessage;
+        
+        messageWrapper.appendChild(personAvatar);
+        messageWrapper.appendChild(messageContent);
+        messageElement.appendChild(messageWrapper);
+
+        messagesContainer.appendChild(messageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+}
+
+// UI functions
+function showDashboard() {
+  authContainer.classList.add('hidden');
+  dashboardContainer.classList.remove('hidden');
+  chatContainer.classList.add('hidden');
+  usernameDisplay.textContent = currentUser.username;
+  socket.send('3'); // List rooms
+  loadUserTodos(); // Load user-specific todos when showing dashboard
+}
+
+function showLoginTab() {
+  tabBtns[0].click();
+}
+
+function showChatRoom(roomTitle) {
+  dashboardContainer.classList.add('hidden');
+  chatContainer.classList.remove('hidden');
+  // Don't clear messages for history
+  // messagesContainer.innerHTML = '';
+  roomName.textContent = roomTitle;
+}
+
+/* JavaScript Initialization for GTR-Themed Effects */
+function initGTREffects() {
+  // Initialize particles
+  const particles = document.createElement('div');
+  particles.id = 'particles';
+  document.body.appendChild(particles);
+
+  for (let i = 0; i < 40; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+
+      // Size between 10px and 60px
+      const size = Math.random() * 50 + 10;
+
+      // Random positions
+      const posX = Math.random() * window.innerWidth;
+      const posY = Math.random() * window.innerHeight;
+
+      // Apply styling
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.left = `${posX}px`;
+      particle.style.top = `${posY}px`;
+
+      // Random opacity and color for GT-R theme - alternate between red and blue
+      const opacity = Math.random() * 0.3 + 0.05;
+      const useBlue = Math.random() > 0.6; // 40% chance of blue particles
+      const color = useBlue ? '15,76,129' : '255,0,51';
+      particle.style.background = `radial-gradient(circle, rgba(${color},${opacity}) 0%, rgba(${color},0) 70%)`;
+
+      // Add to particles container
+      particles.appendChild(particle);
+
+      // Animate particles
+      animateGTRParticle(particle);
+  }
+
+  // Initialize speedometers if they exist
+  initSpeedometers();
+
+  // Initialize engine rev loader
+  initEngineLoader();
+}
+
+function animateGTRParticle(particle) {
+  // Random movement range - particles drift like exhaust
+  const moveX = (Math.random() - 0.5) * 150;
+  const moveY = (Math.random() - 0.5) * 150;
+
+  // Animation duration between 8 and 15 seconds
+  const duration = Math.random() * 7000 + 8000;
+
+  // Set CSS animation
+  particle.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
+  particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
+  particle.style.opacity = 0;
+
+  // Reset position after animation completes
+  setTimeout(() => {
+      particle.style.transition = 'none';
+      particle.style.transform = 'translate(0, 0)';
+      particle.style.opacity = 1;
+
+      // Randomize position
+      const posX = Math.random() * window.innerWidth;
+      const posY = Math.random() * window.innerHeight;
+      particle.style.left = `${posX}px`;
+      particle.style.top = `${posY}px`;
+
+      // Start a new animation after a small delay
+      setTimeout(() => animateGTRParticle(particle), 50);
+  }, duration);
+}
+
+function initSpeedometers() {
+  const speedometers = document.querySelectorAll('.speedometer');
+
+  if (speedometers.length === 0) {
+      // Create speedometer container if it doesn't exist
+      const container = document.createElement('div');
+      container.className = 'speedometer-container';
+
+      // Create rooms speedometer
+      const roomsGauge = document.createElement('div');
+      roomsGauge.className = 'rooms-gauge';
+
+      const roomsSpeedometer = createSpeedometer('12', '50');
+      roomsGauge.appendChild(roomsSpeedometer);
+
+      // Create users speedometer
+      const usersGauge = document.createElement('div');
+      usersGauge.className = 'users-gauge';
+
+      const usersSpeedometer = createSpeedometer('27', '100');
+      usersGauge.appendChild(usersSpeedometer);
+
+      // Add to container
+      container.appendChild(roomsGauge);
+      container.appendChild(usersGauge);
+
+      // Add to page - insert before the rooms-section if it exists
+      const roomsSection = document.querySelector('.rooms-section');
+      if (roomsSection) {
+          roomsSection.parentNode.insertBefore(container, roomsSection);
+      } else {
+          // Fallback - add to body
+          document.body.appendChild(container);
+      }
+  }
+
+  // Now update all speedometers
+  updateSpeedometers();
+}
+
+function createSpeedometer(label, value, max) {
+  const div = document.createElement('div');
+  div.className = 'speedometer';
+  div.dataset.value = value;
+  div.dataset.max = max;
+
+  const dialDiv = document.createElement('div');
+  dialDiv.className = 'speedo-dial';
+
+  const marksDiv = document.createElement('div');
+  marksDiv.className = 'speedo-marks';
+
+  const needleDiv = document.createElement('div');
+  needleDiv.className = 'speedo-needle';
+
+  const valueDiv = document.createElement('div');
+  valueDiv.className = 'speedo-value';
+  valueDiv.textContent = value;
+
+  const labelDiv = document.createElement('div');
+  labelDiv.className = 'speedo-label';
+  labelDiv.textContent = label;
+
+  // Assemble speedometer
+  dialDiv.appendChild(marksDiv);
+  dialDiv.appendChild(needleDiv);
+  div.appendChild(dialDiv);
+
+  const wrapper = document.createElement('div');
+  wrapper.style.textAlign = 'center';
+  wrapper.appendChild(div);
+  wrapper.appendChild(valueDiv);
+  wrapper.appendChild(labelDiv);
+
+  return wrapper;
+}
+
+function updateSpeedometers() {
+  const speedometers = document.querySelectorAll('.speedometer');
+
+  speedometers.forEach(speedo => {
+      const needle = speedo.querySelector('.speedo-needle');
+      const value = speedo.dataset.value || 0;
+      const max = speedo.dataset.max || 100;
+
+      // Calculate angle (0 is at -90deg, max is at 90deg)
+      const angle = -90 + (value / max) * 180;
+
+      // Animate needle
+      needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
+  });
+}
+
+function initEngineLoader() {
+  const loader = document.querySelector('.engine-loader');
+  if (!loader) return;
+
+  const needle = loader.querySelector('.needle');
+
+  // Animate engine rev
+  let rev = 0;
+  let revUp = true;
+
+  setInterval(() => {
+      if (revUp) {
+          rev += 5;
+          if (rev >= 180) {
+              revUp = false;
+          }
+      } else {
+          rev -= 3;
+          if (rev <= 45) {
+              revUp = true;
+          }
+      }
+
+      needle.style.transform = `translateX(-50%) rotate(${rev}deg)`;
+  }, 50);
+}
+// Initialize application
+document.addEventListener('DOMContentLoaded', () => {
+  connectWebSocket();
+  initParticles();
+});
+
+// At the end of your app.js file
+function initParticles() {
+  const particles = document.createElement('div');
+  particles.id = 'particles';
+  document.body.appendChild(particles);
+
+  for (let i = 0; i < 30; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+
+      // Size between 20px and 100px
+      const size = Math.random() * 80 + 20;
+
+      // Random positions
+      const posX = Math.random() * window.innerWidth;
+      const posY = Math.random() * window.innerHeight;
+
+      // Apply styling
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.left = `${posX}px`;
+      particle.style.top = `${posY}px`;
+
+      // Random color between blue and red
+      const color = Math.random() > 0.7 ? '213,0,0' : '15,76,129';
+      const opacity = Math.random() * 0.2 + 0.05;
+      particle.style.background = `radial-gradient(circle, rgba(${color},${opacity}) 0%, rgba(${color},0) 70%)`;
+
+      // Add to particles container
+      particles.appendChild(particle);
+
+      // Animate particles
+      animateParticle(particle);
+  }
+}
+
+function animateParticle(particle) {
+  // Random movement range
+  const moveX = (Math.random() - 0.5) * 100;
+  const moveY = (Math.random() - 0.5) * 100;
+
+  // Animation duration between 10 and 25 seconds
+  const duration = Math.random() * 15000 + 10000;
+
+  // Set CSS animation
+  particle.style.transition = `transform ${duration}ms ease-in-out`;
+  particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
+
+  // Reset position after animation completes
+  setTimeout(() => {
+      particle.style.transition = 'none';
+      particle.style.transform = 'translate(0, 0)';
+
+      // Start a new animation after a small delay
+      setTimeout(() => animateParticle(particle), 50);
+  }, duration);
+}
+
+// Add to your existing app.js
+
+// Todo List Functionality
+let todos = [];
+const todoPanel = document.createElement('div');
+todoPanel.className = 'todo-panel';
+document.body.appendChild(todoPanel);
+
+function initTodoList() {
+    todoPanel.innerHTML = `
+        <div class="todo-header">
+            <h2>Track Day Checklist</h2>
+            <button class="close-btn" onclick="toggleTodoPanel()">×</button>
+        </div>
+        <form class="todo-form" onsubmit="addTodo(event)">
+            <input type="text" class="todo-input" placeholder="Add race preparation task...">
+            <button type="submit" class="suggestion-btn">Add</button>
+        </form>
+        <div class="todo-list"></div>
+    `;
+    
+    loadUserTodos();
+}
+
+function loadUserTodos() {
+    if (currentUser) {
+        const userTodos = JSON.parse(localStorage.getItem(`racingTodos_${currentUser.username}`) || '[]');
+        todos = userTodos;
+        renderTodos();
+    }
+}
+
+function toggleTodoPanel() {
+    todoPanel.classList.toggle('active');
+}
+
+function addTodo(event) {
+    event.preventDefault();
+    const input = event.target.querySelector('.todo-input');
+    const text = input.value.trim();
+    
+    if (text && currentUser) {
+        todos.push({
+            id: Date.now(),
+            text,
+            completed: false
+        });
+        
+        localStorage.setItem(`racingTodos_${currentUser.username}`, JSON.stringify(todos));
+        input.value = '';
+        renderTodos();
+    }
+}
+
+function toggleTodo(id) {
+    if (!currentUser) return;
+    
+    todos = todos.map(todo =>
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    );
+    localStorage.setItem(`racingTodos_${currentUser.username}`, JSON.stringify(todos));
+    renderTodos();
+}
+
+function deleteTodo(id) {
+    if (!currentUser) return;
+    
+    todos = todos.filter(todo => todo.id !== id);
+    localStorage.setItem(`racingTodos_${currentUser.username}`, JSON.stringify(todos));
+    renderTodos();
+}
+
+function renderTodos() {
+    const todoList = todoPanel.querySelector('.todo-list');
+    todoList.innerHTML = todos.map(todo => `
+        <div class="todo-item">
+            <div class="todo-checkbox ${todo.completed ? 'checked' : ''}"
+                 onclick="toggleTodo(${todo.id})"></div>
+            <span class="todo-text">${todo.text}</span>
+            <button class="todo-delete" onclick="deleteTodo(${todo.id})">×</button>
+        </div>
+    `).join('');
+}
+
+// Initialize todo list when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initTodoList();
+    
+    // Add todo button to chat header
+    const chatHeader = document.querySelector('.chat-header');
+    const todoBtn = document.createElement('button');
+    todoBtn.className = 'btn btn-outline';
+    todoBtn.textContent = 'CHECKLIST';
+    todoBtn.onclick = toggleTodoPanel;
+    chatHeader.appendChild(todoBtn);
+});
+
+// Make functions available globally
+window.toggleTodoPanel = toggleTodoPanel;
+window.addTodo = addTodo;
+window.toggleTodo = toggleTodo;
+window.deleteTodo = deleteTodo;
+
+// Make joinRoom global so onclick works
+window.joinRoom = joinRoom;
+
+// Update the CSS styles
+const style = document.createElement('style');
+style.textContent = `
+    .message-wrapper {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .person-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #444;
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .person-avatar::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        background: #666;
+        border-radius: 50%;
+    }
+
+    .person-avatar::after {
+        content: '';
+        position: absolute;
+        top: 65%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 10px;
+        background: #666;
+        border-radius: 10px 10px 0 0;
+    }
+
+    .message-content {
+        background: #2a2a2a;
+        padding: 10px 15px;
+        border-radius: 8px;
+        color: #fff;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        max-width: 80%;
+        word-wrap: break-word;
+    }
+
+    .message.system {
+        text-align: center;
+        color: #888;
+        font-style: italic;
+        margin: 10px 0;
+        word-wrap: break-word;
+    }
+
+    .message.other {
+        margin: 8px 0;
+    }
+`;
+document.head.appendChild(style);
+
+
