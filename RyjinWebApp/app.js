@@ -28,7 +28,6 @@ const tabBtns = document.querySelectorAll('.tab-btn');
 
 // Initialize WebSocket connection
 function connectWebSocket() {
-  // Use the correct websocket URL format
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
 
@@ -47,7 +46,6 @@ function connectWebSocket() {
           alert('Registration successful! Please login.');
           showLoginTab();
       } else if (message.includes('Available rooms:')) {
-          // Parse room list
           const rooms = [];
           const lines = message.split('\n');
           for (let i = 1; i < lines.length; i++) {
@@ -87,8 +85,6 @@ loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const username = document.getElementById('loginUsername').value;
   const password = document.getElementById('loginPassword').value;
-
-  // Send login as a single message with format "1.username.password"
   socket.send(`1.${username}.${password}`);
 });
 
@@ -96,8 +92,6 @@ registerForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const username = document.getElementById('registerUsername').value;
   const password = document.getElementById('registerPassword').value;
-
-  // Send registration as a single message with format "2.username.password"
   socket.send(`2.${username}.${password}`);
 });
 
@@ -116,16 +110,10 @@ createRoomForm.addEventListener('submit', (e) => {
   const newRoomName = roomNameInput.value.trim();
 
   if (newRoomName) {
-      // Send create room command with the room name
       socket.send(`create:${newRoomName}`);
       roomNameInput.value = '';
   }
 });
-
-function hideCreateRoomModal() {
-  createRoomModal.classList.add('hidden');
-  document.getElementById('roomNameInput').value = '';
-}
 
 // Navigation
 logoutBtn.addEventListener('click', () => {
@@ -136,7 +124,7 @@ logoutBtn.addEventListener('click', () => {
   authContainer.classList.remove('hidden');
   dashboardContainer.classList.add('hidden');
   chatContainer.classList.add('hidden');
-  connectWebSocket(); // Reconnect with fresh connection
+  connectWebSocket();
 });
 
 leaveRoomBtn.addEventListener('click', () => {
@@ -171,7 +159,6 @@ function displayRooms(rooms) {
 }
 
 function joinRoom(roomNumber) {
-  // Send join command with room number
   socket.send(`join:${roomNumber}`);
 }
 
@@ -187,7 +174,6 @@ messageForm.addEventListener('submit', (e) => {
 });
 
 function addMessage(message) {
-    // Skip system messages and notifications
     if (message.includes('Welcome to GTR Chat Server!') ||
         message.includes('Joined room:') ||
         message.includes('=== Chat Room:') ||
@@ -198,8 +184,6 @@ function addMessage(message) {
         return;
     }
 
-    // Only process messages that look like actual user messages
-    // They should contain a colon after the username
     if (!message.includes(':')) {
         return;
     }
@@ -207,24 +191,22 @@ function addMessage(message) {
     const messageElement = document.createElement('div');
     messageElement.className = 'message other';
 
-    // Clean the message by removing timestamps and any non-printable characters
     let cleanMessage = message
-        .replace(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\]/g, '') // Remove timestamps
-        .replace(/[^\x20-\x7E]/g, '') // Remove non-printable characters
+        .replace(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\]/g, '')
+        .replace(/[^\x20-\x7E]/g, '')
         .trim();
 
-    // Only process if the message is not empty after cleaning
     if (cleanMessage) {
         const messageWrapper = document.createElement('div');
         messageWrapper.className = 'message-wrapper';
-        
+
         const personAvatar = document.createElement('div');
         personAvatar.className = 'person-avatar';
-        
+
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         messageContent.textContent = cleanMessage;
-        
+
         messageWrapper.appendChild(personAvatar);
         messageWrapper.appendChild(messageContent);
         messageElement.appendChild(messageWrapper);
@@ -240,8 +222,20 @@ function showDashboard() {
   dashboardContainer.classList.remove('hidden');
   chatContainer.classList.add('hidden');
   usernameDisplay.textContent = currentUser.username;
-  socket.send('3'); // List rooms
-  loadUserTodos(); // Load user-specific todos when showing dashboard
+  socket.send('3');
+  loadUserTodos();
+
+  const dashboardHeader = document.querySelector('.dashboard-header');
+  if (!document.querySelector('.race-data-btn')) {
+      const raceDataBtn = document.createElement('button');
+      raceDataBtn.className = 'btn btn-outline race-data-btn';
+      raceDataBtn.textContent = 'VIEW RACE DATA';
+      raceDataBtn.onclick = function() {
+          console.log('Dashboard race data button clicked'); // Debug log
+          showRaceData();
+      };
+      dashboardHeader.appendChild(raceDataBtn);
+  }
 }
 
 function showLoginTab() {
@@ -251,269 +245,8 @@ function showLoginTab() {
 function showChatRoom(roomTitle) {
   dashboardContainer.classList.add('hidden');
   chatContainer.classList.remove('hidden');
-  // Don't clear messages for history
-  // messagesContainer.innerHTML = '';
   roomName.textContent = roomTitle;
 }
-
-/* JavaScript Initialization for GTR-Themed Effects */
-function initGTREffects() {
-  // Initialize particles
-  const particles = document.createElement('div');
-  particles.id = 'particles';
-  document.body.appendChild(particles);
-
-  for (let i = 0; i < 40; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'particle';
-
-      // Size between 10px and 60px
-      const size = Math.random() * 50 + 10;
-
-      // Random positions
-      const posX = Math.random() * window.innerWidth;
-      const posY = Math.random() * window.innerHeight;
-
-      // Apply styling
-      particle.style.width = `${size}px`;
-      particle.style.height = `${size}px`;
-      particle.style.left = `${posX}px`;
-      particle.style.top = `${posY}px`;
-
-      // Random opacity and color for GT-R theme - alternate between red and blue
-      const opacity = Math.random() * 0.3 + 0.05;
-      const useBlue = Math.random() > 0.6; // 40% chance of blue particles
-      const color = useBlue ? '15,76,129' : '255,0,51';
-      particle.style.background = `radial-gradient(circle, rgba(${color},${opacity}) 0%, rgba(${color},0) 70%)`;
-
-      // Add to particles container
-      particles.appendChild(particle);
-
-      // Animate particles
-      animateGTRParticle(particle);
-  }
-
-  // Initialize speedometers if they exist
-  initSpeedometers();
-
-  // Initialize engine rev loader
-  initEngineLoader();
-}
-
-function animateGTRParticle(particle) {
-  // Random movement range - particles drift like exhaust
-  const moveX = (Math.random() - 0.5) * 150;
-  const moveY = (Math.random() - 0.5) * 150;
-
-  // Animation duration between 8 and 15 seconds
-  const duration = Math.random() * 7000 + 8000;
-
-  // Set CSS animation
-  particle.style.transition = `transform ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`;
-  particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
-  particle.style.opacity = 0;
-
-  // Reset position after animation completes
-  setTimeout(() => {
-      particle.style.transition = 'none';
-      particle.style.transform = 'translate(0, 0)';
-      particle.style.opacity = 1;
-
-      // Randomize position
-      const posX = Math.random() * window.innerWidth;
-      const posY = Math.random() * window.innerHeight;
-      particle.style.left = `${posX}px`;
-      particle.style.top = `${posY}px`;
-
-      // Start a new animation after a small delay
-      setTimeout(() => animateGTRParticle(particle), 50);
-  }, duration);
-}
-
-function initSpeedometers() {
-  const speedometers = document.querySelectorAll('.speedometer');
-
-  if (speedometers.length === 0) {
-      // Create speedometer container if it doesn't exist
-      const container = document.createElement('div');
-      container.className = 'speedometer-container';
-
-      // Create rooms speedometer
-      const roomsGauge = document.createElement('div');
-      roomsGauge.className = 'rooms-gauge';
-
-      const roomsSpeedometer = createSpeedometer('12', '50');
-      roomsGauge.appendChild(roomsSpeedometer);
-
-      // Create users speedometer
-      const usersGauge = document.createElement('div');
-      usersGauge.className = 'users-gauge';
-
-      const usersSpeedometer = createSpeedometer('27', '100');
-      usersGauge.appendChild(usersSpeedometer);
-
-      // Add to container
-      container.appendChild(roomsGauge);
-      container.appendChild(usersGauge);
-
-      // Add to page - insert before the rooms-section if it exists
-      const roomsSection = document.querySelector('.rooms-section');
-      if (roomsSection) {
-          roomsSection.parentNode.insertBefore(container, roomsSection);
-      } else {
-          // Fallback - add to body
-          document.body.appendChild(container);
-      }
-  }
-
-  // Now update all speedometers
-  updateSpeedometers();
-}
-
-function createSpeedometer(label, value, max) {
-  const div = document.createElement('div');
-  div.className = 'speedometer';
-  div.dataset.value = value;
-  div.dataset.max = max;
-
-  const dialDiv = document.createElement('div');
-  dialDiv.className = 'speedo-dial';
-
-  const marksDiv = document.createElement('div');
-  marksDiv.className = 'speedo-marks';
-
-  const needleDiv = document.createElement('div');
-  needleDiv.className = 'speedo-needle';
-
-  const valueDiv = document.createElement('div');
-  valueDiv.className = 'speedo-value';
-  valueDiv.textContent = value;
-
-  const labelDiv = document.createElement('div');
-  labelDiv.className = 'speedo-label';
-  labelDiv.textContent = label;
-
-  // Assemble speedometer
-  dialDiv.appendChild(marksDiv);
-  dialDiv.appendChild(needleDiv);
-  div.appendChild(dialDiv);
-
-  const wrapper = document.createElement('div');
-  wrapper.style.textAlign = 'center';
-  wrapper.appendChild(div);
-  wrapper.appendChild(valueDiv);
-  wrapper.appendChild(labelDiv);
-
-  return wrapper;
-}
-
-function updateSpeedometers() {
-  const speedometers = document.querySelectorAll('.speedometer');
-
-  speedometers.forEach(speedo => {
-      const needle = speedo.querySelector('.speedo-needle');
-      const value = speedo.dataset.value || 0;
-      const max = speedo.dataset.max || 100;
-
-      // Calculate angle (0 is at -90deg, max is at 90deg)
-      const angle = -90 + (value / max) * 180;
-
-      // Animate needle
-      needle.style.transform = `translateX(-50%) rotate(${angle}deg)`;
-  });
-}
-
-function initEngineLoader() {
-  const loader = document.querySelector('.engine-loader');
-  if (!loader) return;
-
-  const needle = loader.querySelector('.needle');
-
-  // Animate engine rev
-  let rev = 0;
-  let revUp = true;
-
-  setInterval(() => {
-      if (revUp) {
-          rev += 5;
-          if (rev >= 180) {
-              revUp = false;
-          }
-      } else {
-          rev -= 3;
-          if (rev <= 45) {
-              revUp = true;
-          }
-      }
-
-      needle.style.transform = `translateX(-50%) rotate(${rev}deg)`;
-  }, 50);
-}
-// Initialize application
-document.addEventListener('DOMContentLoaded', () => {
-  connectWebSocket();
-  initParticles();
-});
-
-// At the end of your app.js file
-function initParticles() {
-  const particles = document.createElement('div');
-  particles.id = 'particles';
-  document.body.appendChild(particles);
-
-  for (let i = 0; i < 30; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'particle';
-
-      // Size between 20px and 100px
-      const size = Math.random() * 80 + 20;
-
-      // Random positions
-      const posX = Math.random() * window.innerWidth;
-      const posY = Math.random() * window.innerHeight;
-
-      // Apply styling
-      particle.style.width = `${size}px`;
-      particle.style.height = `${size}px`;
-      particle.style.left = `${posX}px`;
-      particle.style.top = `${posY}px`;
-
-      // Random color between blue and red
-      const color = Math.random() > 0.7 ? '213,0,0' : '15,76,129';
-      const opacity = Math.random() * 0.2 + 0.05;
-      particle.style.background = `radial-gradient(circle, rgba(${color},${opacity}) 0%, rgba(${color},0) 70%)`;
-
-      // Add to particles container
-      particles.appendChild(particle);
-
-      // Animate particles
-      animateParticle(particle);
-  }
-}
-
-function animateParticle(particle) {
-  // Random movement range
-  const moveX = (Math.random() - 0.5) * 100;
-  const moveY = (Math.random() - 0.5) * 100;
-
-  // Animation duration between 10 and 25 seconds
-  const duration = Math.random() * 15000 + 10000;
-
-  // Set CSS animation
-  particle.style.transition = `transform ${duration}ms ease-in-out`;
-  particle.style.transform = `translate(${moveX}px, ${moveY}px)`;
-
-  // Reset position after animation completes
-  setTimeout(() => {
-      particle.style.transition = 'none';
-      particle.style.transform = 'translate(0, 0)';
-
-      // Start a new animation after a small delay
-      setTimeout(() => animateParticle(particle), 50);
-  }, duration);
-}
-
-// Add to your existing app.js
 
 // Todo List Functionality
 let todos = [];
@@ -533,7 +266,6 @@ function initTodoList() {
         </form>
         <div class="todo-list"></div>
     `;
-    
     loadUserTodos();
 }
 
@@ -545,45 +277,42 @@ function loadUserTodos() {
     }
 }
 
-function toggleTodoPanel() {
+window.toggleTodoPanel = function() {
     todoPanel.classList.toggle('active');
-}
+};
 
-function addTodo(event) {
+window.addTodo = function(event) {
     event.preventDefault();
     const input = event.target.querySelector('.todo-input');
     const text = input.value.trim();
-    
+
     if (text && currentUser) {
         todos.push({
             id: Date.now(),
             text,
             completed: false
         });
-        
         localStorage.setItem(`racingTodos_${currentUser.username}`, JSON.stringify(todos));
         input.value = '';
         renderTodos();
     }
-}
+};
 
-function toggleTodo(id) {
+window.toggleTodo = function(id) {
     if (!currentUser) return;
-    
     todos = todos.map(todo =>
         todo.id === id ? { ...todo, completed: !todo.completed } : todo
     );
     localStorage.setItem(`racingTodos_${currentUser.username}`, JSON.stringify(todos));
     renderTodos();
-}
+};
 
-function deleteTodo(id) {
+window.deleteTodo = function(id) {
     if (!currentUser) return;
-    
     todos = todos.filter(todo => todo.id !== id);
     localStorage.setItem(`racingTodos_${currentUser.username}`, JSON.stringify(todos));
     renderTodos();
-}
+};
 
 function renderTodos() {
     const todoList = todoPanel.querySelector('.todo-list');
@@ -597,27 +326,35 @@ function renderTodos() {
     `).join('');
 }
 
-// Initialize todo list when DOM is loaded
+// Initialize application
 document.addEventListener('DOMContentLoaded', () => {
+    connectWebSocket();
+    initParticles();
     initTodoList();
-    
-    // Add todo button to chat header
+
+    // Add buttons to chat header
     const chatHeader = document.querySelector('.chat-header');
     const todoBtn = document.createElement('button');
     todoBtn.className = 'btn btn-outline';
     todoBtn.textContent = 'CHECKLIST';
-    todoBtn.onclick = toggleTodoPanel;
+    todoBtn.addEventListener('click', toggleTodoPanel);
     chatHeader.appendChild(todoBtn);
+
+    const raceDataBtn = document.createElement('button');
+    raceDataBtn.className = 'btn btn-outline';
+    raceDataBtn.textContent = 'RACE DATA';
+    raceDataBtn.onclick = function() {
+        console.log('Chat header race data button clicked'); // Debug log
+        showRaceData();
+    };
+    chatHeader.appendChild(raceDataBtn);
 });
 
-// Make functions available globally
-window.toggleTodoPanel = toggleTodoPanel;
-window.addTodo = addTodo;
-window.toggleTodo = toggleTodo;
-window.deleteTodo = deleteTodo;
-
-// Make joinRoom global so onclick works
+// Make joinRoom global
 window.joinRoom = joinRoom;
+
+// Rest of your existing code...
+// [Keep all your existing particle, speedometer, and other effects code]
 
 // Update the CSS styles
 const style = document.createElement('style');
