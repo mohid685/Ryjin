@@ -153,10 +153,10 @@
                     <div class="stat-card">
                         <h3><%= entry.getKey() %></h3>
                         <div class="stat-value"><%= entry.getValue() %></div>
-                    </div>
+                </div>
                 <% } %>
             </div>
-        </div>
+            </div>
 
         <div class="chart-container">
             <h2>Drivers per Team</h2>
@@ -167,10 +167,10 @@
                     <div class="bar" style="height: <%= height %>px;">
                         <div class="bar-value"><%= entry.getValue() %></div>
                         <div class="bar-label"><%= entry.getKey() %></div>
-                    </div>
+                </div>
                 <% } %>
             </div>
-        </div>
+            </div>
 
         <div class="chart-container">
             <h2>Teams Overview</h2>
