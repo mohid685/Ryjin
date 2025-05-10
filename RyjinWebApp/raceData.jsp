@@ -45,6 +45,10 @@
             box-shadow: 0 0 25px var(--glow-color);
             position: relative;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
         }
 
         .header::before {
@@ -83,6 +87,34 @@
             height: 2px;
             background: var(--primary-color);
             box-shadow: 0 0 10px var(--glow-color);
+        }
+
+        .tick-mark {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #ff0000;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 5px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tick-mark:hover {
+            color: #cc0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .tick-mark:active {
+            color: #990000;
         }
 
         .dashboard {
@@ -385,11 +417,44 @@
             height: 300px;
             margin: 20px 0;
         }
+
+        .terminate-section {
+            text-align: center;
+            margin: 40px 0;
+            padding: 20px;
+        }
+
+        .terminate-btn {
+            background: linear-gradient(145deg, #ff0000, #cc0000);
+            border: none;
+            color: var(--text-color);
+            padding: 15px 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+            min-width: 200px;
+        }
+
+        .terminate-btn:hover {
+            background: linear-gradient(145deg, #cc0000, #ff0000);
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.5);
+        }
+
+        .terminate-btn:active {
+            transform: scale(0.95);
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>RACE DATA VISUALIZATION</h1>
+        <div onclick="terminatePage()" class="tick-mark">✓</div>
     </div>
 
     <div class="dashboard">
@@ -670,6 +735,10 @@
                 }, 100 * index);
             });
         });
+
+        function terminatePage() {
+            window.close();
+        }
     </script>
 </body>
 </html>
