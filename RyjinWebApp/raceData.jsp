@@ -2,6 +2,45 @@
 <%@ page import="java.nio.file.Files" %>
 <%@ page import="java.nio.file.Paths" %>
 <%@ page import="java.nio.file.Path" %>
+<%@ page import="jakarta.servlet.http.Cookie" %>
+<%@ page import="jakarta.servlet.http.HttpSession" %>
+<%
+    // Get or create session
+    HttpSession userSession = request.getSession(true);
+    
+    // Set session timeout to 30 minutes
+    userSession.setMaxInactiveInterval(30 * 60);
+    
+    // Create a session cookie if it doesn't exist
+    Cookie sessionCookie = null;
+    Cookie[] cookies = request.getCookies();
+    if (cookies != null) {
+        for (Cookie cookie : cookies) {
+            if (cookie.getName().equals("JSESSIONID")) {
+                sessionCookie = cookie;
+                break;
+            }
+        }
+    }
+    
+    if (sessionCookie == null) {
+        sessionCookie = new Cookie("JSESSIONID", userSession.getId());
+        sessionCookie.setMaxAge(30 * 60); // 30 minutes
+        sessionCookie.setPath("/");
+        sessionCookie.setHttpOnly(true);
+        response.addCookie(sessionCookie);
+    }
+    
+    // Store user info in session if not already present
+    if (userSession.getAttribute("lastVisit") == null) {
+        userSession.setAttribute("lastVisit", new java.util.Date());
+        userSession.setAttribute("visitCount", 1);
+    } else {
+        int visitCount = (Integer) userSession.getAttribute("visitCount");
+        userSession.setAttribute("visitCount", visitCount + 1);
+        userSession.setAttribute("lastVisit", new java.util.Date());
+    }
+%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -739,6 +778,69 @@
         function terminatePage() {
             window.close();
         }
+
+        // Add cookie management functions
+        function setCookie(name, value, days) {
+            let expires = "";
+            if (days) {
+                const date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = name + '=; Max-Age=-99999999; path=/';
+        }
+
+        // Store user preferences
+        function saveUserPreferences() {
+            const preferences = {
+                theme: 'dark',
+                lastVisit: new Date().toISOString()
+            };
+            setCookie('userPreferences', JSON.stringify(preferences), 30);
+        }
+
+        // Load user preferences
+        function loadUserPreferences() {
+            const preferences = getCookie('userPreferences');
+            if (preferences) {
+                try {
+                    const parsedPrefs = JSON.parse(preferences);
+                    // Apply preferences
+                    if (parsedPrefs.theme) {
+                        document.body.classList.add(parsedPrefs.theme + '-theme');
+                    }
+                } catch (e) {
+                    console.error('Error loading preferences:', e);
+                }
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUserPreferences();
+            saveUserPreferences();
+            
+            // Add session check
+            const sessionId = getCookie('JSESSIONID');
+            if (!sessionId) {
+                console.warn('No session ID found');
+            }
+        });
     </script>
 </body>
 </html>

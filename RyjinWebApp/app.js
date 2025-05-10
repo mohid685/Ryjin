@@ -85,6 +85,10 @@ loginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const username = document.getElementById('loginUsername').value;
   const password = document.getElementById('loginPassword').value;
+  
+  // Store user info in cookie
+  setCookie('username', username, 1); // Expires in 1 day
+  
   socket.send(`1.${username}.${password}`);
 });
 
@@ -117,6 +121,10 @@ createRoomForm.addEventListener('submit', (e) => {
 
 // Navigation
 logoutBtn.addEventListener('click', () => {
+  // Clear cookies
+  deleteCookie('username');
+  deleteCookie('JSESSIONID');
+  
   socket.close();
   currentUser = null;
   currentRoom = null;
@@ -332,6 +340,13 @@ document.addEventListener('DOMContentLoaded', () => {
     initParticles();
     initTodoList();
 
+    // Check for existing session
+    const username = getCookie('username');
+    if (username) {
+        currentUser = { username: username };
+        showDashboard();
+    }
+
     // Add buttons to chat header
     const chatHeader = document.querySelector('.chat-header');
     const todoBtn = document.createElement('button');
@@ -344,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
     raceDataBtn.className = 'btn btn-outline';
     raceDataBtn.textContent = 'RACE DATA';
     raceDataBtn.onclick = function() {
-        console.log('Chat header race data button clicked'); // Debug log
+        console.log('Chat header race data button clicked');
         showRaceData();
     };
     chatHeader.appendChild(raceDataBtn);
@@ -422,5 +437,41 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// Session and Cookie Management
+function initializeSession() {
+    // Check for existing session
+    const sessionId = getCookie('JSESSIONID');
+    if (!sessionId) {
+        console.log('No active session found');
+        return false;
+    }
+    return true;
+}
+
+function getCookie(name) {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for(let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+function setCookie(name, value, days) {
+    let expires = "";
+    if (days) {
+        const date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
+}
+
+function deleteCookie(name) {
+    document.cookie = name + '=; Max-Age=-99999999; path=/';
+}
 
 
