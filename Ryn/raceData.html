@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Race Data Visualization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff0000;
+            --secondary-color: #1a1a1a;
+            --accent-color: #ff3333;
+            --text-color: #ffffff;
+            --dark-bg: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --border-color: #333;
+            --glow-color: rgba(255, 0, 0, 0.3);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--text-color);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--secondary-color);
+            border-radius: 8px;
+            box-shadow: 0 0 15px var(--glow-color);
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px var(--glow-color);
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+        }
+
+        .graph-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            justify-content: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .graph {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 25px;
+            flex: 1;
+            min-width: 350px;
+            max-width: 500px;
+            box-shadow: 0 0 15px var(--glow-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .graph-title {
+            color: var(--primary-color);
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            margin: 0 0 25px 0;
+            font-size: 1.4rem;
+            letter-spacing: 1px;
+            text-shadow: 0 0 8px var(--glow-color);
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .bar-container {
+            margin-bottom: 15px;
+        }
+
+        .bar-label {
+            color: var(--text-color);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+        }
+
+        .bar {
+            height: 25px;
+            background: var(--border-color);
+            border-radius: 5px;
+            overflow: hidden;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            border-radius: 5px;
+            transition: width 0.8s ease;
+            box-shadow: 0 0 5px var(--glow-color);
+        }
+
+        .error-message {
+            color: var(--accent-color);
+            text-align: center;
+            padding: 40px;
+            font-family: 'Orbitron', sans-serif;
+            border: 2px solid var(--accent-color);
+            border-radius: 10px;
+            max-width: 800px;
+            margin: 50px auto;
+            background: rgba(255, 51, 51, 0.05);
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .graph {
+                min-width: 280px;
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .graph-title {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>RACE DATA VISUALIZATION</h1>
+    </div>
+
+    <div id="errorMessage" class="error-message" style="display: none;">
+        <h2>ERROR LOADING RACE DATA</h2>
+        <p id="errorText"></p>
+    </div>
+
+    <div id="graphContainer" class="graph-container" style="display: none;">
+        <!-- Graphs will be inserted here -->
+    </div>
+
+    <script>
+        // Fetch race data from text file
+        fetch('raceData.txt')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load race data file');
+                }
+                return response.text();
+            })
+            .then(text => {
+                try {
+                    // Parse the text as JSON
+                    const data = JSON.parse(text);
+                    displayGraphs(data);
+                } catch (error) {
+                    showError('Failed to parse race data: ' + error.message);
+                }
+            })
+            .catch(error => {
+                showError('Error loading race data: ' + error.message);
+            });
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            document.getElementById('errorMessage').style.display = 'block';
+        }
+
+        function displayGraphs(data) {
+            const container = document.getElementById('graphContainer');
+            container.style.display = 'flex';
+
+            // Drivers by Nationality Graph
+            const nationalityGraph = createGraph('DRIVERS BY NATIONALITY');
+            const nationalityCount = {};
+            
+            data.drivers.forEach(driver => {
+                nationalityCount[driver.nationality] = (nationalityCount[driver.nationality] || 0) + 1;
+            });
+
+            Object.entries(nationalityCount)
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .forEach(([nationality, count]) => {
+                    const percentage = (count * 100) / data.drivers.length;
+                    addBar(nationalityGraph, nationality, count, percentage);
+                });
+
+            container.appendChild(nationalityGraph);
+
+            // Teams by Championships Graph
+            const championshipsGraph = createGraph('TEAMS BY CHAMPIONSHIPS');
+            const teams = [...data.teams].sort((a, b) => 
+                parseInt(b.world_championships) - parseInt(a.world_championships));
+            const maxChampionships = parseInt(teams[0].world_championships);
+
+            teams.forEach(team => {
+                const percentage = (parseInt(team.world_championships) * 100) / maxChampionships;
+                addBar(championshipsGraph, team.name, team.world_championships, percentage);
+            });
+
+            container.appendChild(championshipsGraph);
+
+            // Drivers Age Distribution
+            const ageGraph = createGraph('DRIVERS AGE DISTRIBUTION');
+            const ageGroups = {
+                '18-22': 0,
+                '23-27': 0,
+                '28-32': 0,
+                '33+': 0
+            };
+
+            const currentYear = new Date().getFullYear();
+            data.drivers.forEach(driver => {
+                const birthYear = parseInt(driver.date_of_birth.substring(0, 4));
+                const age = currentYear - birthYear;
+
+                if (age >= 18 && age <= 22) ageGroups['18-22']++;
+                else if (age <= 27) ageGroups['23-27']++;
+                else if (age <= 32) ageGroups['28-32']++;
+                else ageGroups['33+']++;
+            });
+
+            Object.entries(ageGroups).forEach(([group, count]) => {
+                const percentage = (count * 100) / data.drivers.length;
+                addBar(ageGraph, group + ' years', count, percentage);
+            });
+
+            container.appendChild(ageGraph);
+
+            // Animate bars
+            setTimeout(() => {
+                document.querySelectorAll('.bar-fill').forEach(bar => {
+                    const width = bar.style.width;
+                    bar.style.width = '0';
+                    setTimeout(() => {
+                        bar.style.width = width;
+                    }, 100);
+                });
+            }, 100);
+        }
+
+        function createGraph(title) {
+            const graph = document.createElement('div');
+            graph.className = 'graph';
+            
+            const titleElement = document.createElement('h3');
+            titleElement.className = 'graph-title';
+            titleElement.textContent = title;
+            
+            graph.appendChild(titleElement);
+            return graph;
+        }
+
+        function addBar(graph, label, value, percentage) {
+            const container = document.createElement('div');
+            container.className = 'bar-container';
+
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'bar-label';
+            labelDiv.innerHTML = `
+                <span>${label}</span>
+                <span>${value} (${Math.round(percentage)}%)</span>
+            `;
+
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+
+            const fill = document.createElement('div');
+            fill.className = 'bar-fill';
+            fill.style.width = '0%';
+
+            bar.appendChild(fill);
+            container.appendChild(labelDiv);
+            container.appendChild(bar);
+            graph.appendChild(container);
+
+            // Set the width after a small delay to trigger animation
+            setTimeout(() => {
+                fill.style.width = percentage + '%';
+            }, 50);
+        }
+    </script>
+</body>
+</html> 

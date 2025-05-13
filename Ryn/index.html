@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ryjin</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./refresh.css">
+    <link rel="stylesheet" href="./style2.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff0000;
+            --secondary-color: #1a1a1a;
+            --accent-color: #ff3333;
+            --text-color: #ffffff;
+            --dark-bg: #0a0a0a;
+            --card-bg: #1a1a1a;
+            --border-color: #333;
+            --glow-color: rgba(255, 0, 0, 0.3);
+        }
+
+        body {
+            background: var(--dark-bg);
+            color: var(--text-color);
+            font-family: 'Rajdhani', sans-serif;
+            background-image: 
+                linear-gradient(rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.9)),
+                url('data:image/svg+xml,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h100v100H0z" fill="none"/><path d="M0 0h2v2H0z" fill="%23ff0000" fill-opacity="0.1"/></svg>');
+            background-size: 20px 20px;
+        }
+
+        .container {
+            background: linear-gradient(145deg, #0a0a0a, #1a1a1a);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0 20px var(--glow-color);
+            margin: 20px auto;
+            max-width: 1200px;
+            width: 95%;
+        }
+
+        .btn {
+            background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            padding: 12px 24px;
+            font-size: 0.9rem;
+        }
+
+        .btn:hover {
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--glow-color);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 0, 0, 0.2),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #ff0000, #cc0000);
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(145deg, #cc0000, #ff0000);
+        }
+
+        .chat-header {
+            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
+            border-bottom: 2px solid var(--primary-color);
+            box-shadow: 0 2px 10px var(--glow-color);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .room-center {
+            text-shadow: 0 0 10px var(--glow-color);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .messages-container {
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            height: calc(100vh - 250px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message-form {
+            background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+            border-top: 2px solid var(--primary-color);
+            box-shadow: 0 -2px 10px var(--glow-color);
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .message-form input {
+            background: var(--dark-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 1px;
+            padding: 12px;
+            flex: 1;
+            font-size: 1rem;
+        }
+
+        .message-form input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 10px var(--glow-color);
+            outline: none;
+        }
+
+        .room-card {
+            background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            margin: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .room-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary-color);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .room-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .room-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .logo {
+            text-shadow: 0 0 20px var(--glow-color);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 4px;
+            font-size: 2.5rem;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        /* Racing-themed elements */
+        .speed-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+            opacity: 0.5;
+            animation: speedLine 2s linear infinite;
+        }
+
+        @keyframes speedLine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                width: auto;
+            }
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.8rem;
+            }
+
+            .room-center {
+                font-size: 1.2rem;
+            }
+
+            .message-form {
+                flex-direction: column;
+            }
+
+            .message-form input {
+                width: 100%;
+            }
+
+            .logo {
+                font-size: 2rem;
+            }
+        }
+
+        /* Loading Animation */
+        .engine-loader {
+            background: var(--dark-bg);
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 20px var(--glow-color);
+            padding: 20px;
+            text-align: center;
+        }
+
+        .engine-status {
+            text-shadow: 0 0 10px var(--glow-color);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 2px;
+            font-size: 1.2rem;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+
+        /* Race Start Animation */
+        .race-start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            animation: fadeOut 0.5s ease-out 4.5s forwards;
+        }
+
+        .race-start-content {
+            text-align: center;
+            position: relative;
+        }
+
+        .race-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 4rem;
+            color: var(--text-color);
+            text-shadow: 0 0 20px var(--glow-color);
+            margin-bottom: 2rem;
+            animation: pulse 1s infinite;
+        }
+
+        .countdown {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 6rem;
+            color: var(--primary-color);
+            text-shadow: 0 0 30px var(--glow-color);
+            margin: 2rem 0;
+        }
+
+        .race-lights {
+            display: flex;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .light {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #333;
+            border: 2px solid var(--border-color);
+        }
+
+        .light.active {
+            background: var(--primary-color);
+            box-shadow: 0 0 20px var(--glow-color);
+        }
+
+        .start-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out 3.5s forwards;
+        }
+
+        .speed-lines {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .speed-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--primary-color), transparent);
+            opacity: 0.5;
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Hide main content during animation */
+        body.animating > *:not(.race-start-overlay) {
+            opacity: 0;
+        }
+
+        /* Live Feed Bulletin Styles */
+        #gtr-livefeed {
+            background: rgba(10, 10, 10, 0.95);
+            border: 1px solid rgba(255, 0, 0, 0.3);
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.1);
+            width: 35%;
+            min-width: 300px;
+            max-width: 500px;
+            margin: 30px 10px;
+            overflow: hidden;
+            position: relative;
+            float: left;
+        }
+
+        .feed-header {
+            background: linear-gradient(90deg, #1a1a1a, #2a2a2a);
+            border-bottom: 2px solid var(--primary-color);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .feed-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            color: var(--text-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feed-label .blink {
+            color: var(--primary-color);
+            font-weight: bold;
+            text-shadow: 0 0 10px var(--glow-color);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--glow-color);
+            animation: pulse 1s infinite;
+        }
+
+        .feed-content {
+            padding: 8px 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .feed-item {
+            background: rgba(26, 26, 26, 0.6);
+            border-left: 3px solid var(--primary-color);
+            margin: 4px 0;
+            padding: 8px 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            transition: all 0.15s ease-out;
+            position: relative;
+            overflow: visible;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            white-space: normal;
+            opacity: 0;
+            transform: translateY(5px);
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feed-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 0, 0, 0.05), transparent);
+            transform: translateX(-100%);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            20%, 100% { transform: translateX(100%); }
+        }
+
+        .feed-item.alert {
+            border-left-color: #ff3333;
+            background: rgba(255, 51, 51, 0.05);
+        }
+
+        .feed-item.system {
+            border-left-color: #666;
+            background: rgba(102, 102, 102, 0.05);
+        }
+
+        .series-indicator {
+            width: 3px;
+            height: 100%;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 0.85rem;
+            min-width: 55px;
+            font-family: 'Orbitron', sans-serif;
+            flex-shrink: 0;
+        }
+
+        .content {
+            color: #e0e0e0;
+            flex: 1;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 0.3px;
+            padding-right: 8px;
+        }
+
+        .user-badge {
+            background: rgba(255, 0, 0, 0.15);
+            color: #ff3333;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.5px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        /* Custom scrollbar for feed content */
+        .feed-content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .feed-content::-webkit-scrollbar-track {
+            background: rgba(26, 26, 26, 0.5);
+        }
+
+        .feed-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 0, 0, 0.3);
+            border-radius: 2px;
+        }
+
+        .feed-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 0, 0, 0.5);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #gtr-livefeed {
+                width: calc(100% - 20px);
+                min-width: unset;
+                margin: 20px 10px;
+                float: none;
+            }
+
+            .feed-item {
+                padding: 6px 10px;
+                font-size: 0.85rem;
+            }
+
+            .timestamp {
+                font-size: 0.8rem;
+            }
+
+            .content {
+                font-size: 0.9rem;
+            }
+
+            .user-badge {
+                font-size: 0.75rem;
+                padding: 2px 6px;
+            }
+        }
+    </style>
+</head>
+<body class="dark-theme animating">
+    <div class="race-start-overlay">
+        <div class="race-start-content">
+            <div class="race-logo">RYJIN</div>
+            <div class="countdown">3</div>
+            <div class="race-lights">
+                <div class="light"></div>
+                <div class="light"></div>
+                <div class="light"></div>
+                <div class="light"></div>
+                <div class="light"></div>
+            </div>
+            <div class="start-text">GO!</div>
+            <div class="speed-lines"></div>
+        </div>
+    </div>
+
+<!-- Auth Container -->
+<div id="authContainer" class="container">
+    <div class="auth-box">
+        <div class="logo">RYJIN</div>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="login">Login</button>
+            <button class="tab-btn" data-tab="register">Register</button>
+        </div>
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form">
+            <div class="form-group">
+                <input type="text" id="loginUsername" placeholder="Username" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="loginPassword" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form hidden">
+            <div class="form-group">
+                <input type="text" id="registerUsername" placeholder="Username" required>
+            </div>
+            <div class="form-group">
+                <input type="password" id="registerPassword" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+    </div>
+    <div class="engine-loader hidden">
+        <div class="rpm-gauge">
+            <div class="needle"></div>
+            <div class="rpm-markers"></div>
+        </div>
+        <div class="engine-status">ENGINE STARTING...</div>
+    </div>
+</div>
+
+<!-- Dashboard Container -->
+    <div id="dashboardContainer" class="container hidden">
+        <header class="dashboard-header">
+            <h1>DASHBOARD</h1>
+            <div class="user-info">
+                <span class="user-badge">DRIVER: <span id="username"></span></span>
+                <button id="logoutBtn" class="btn btn-outline">LOGOUT</button>
+            </div>
+        </header>
+
+        <div class="rooms-section">
+            <div class="rooms-header">
+                <h2>AVAILABLE ROOMS</h2>
+                <button id="createRoomBtn" class="btn btn-primary">CREATE ROOM</button>
+                <button onclick="showRaceData()" class="btn btn-outline race-data-btn">VIEW RACE DATA</button>
+            </div>
+            <div id="roomsList" class="rooms-grid"></div>
+        </div>
+    </div>
+
+<!-- Chat Room Container -->
+<div id="chatContainer" class="container hidden">
+    <header class="chat-header">
+        <button id="leaveRoomBtn" class="btn btn-outline">← BACK</button>
+        <div class="room-center" id="roomName">SKYLINE</div>
+    </header>
+
+    <div id="messagesContainer" class="messages-container"></div>
+
+    <form id="messageForm" class="message-form">
+        <input type="text" id="messageInput" placeholder="TYPE A MESSAGE OR COMMAND (/users, /exit)" autocomplete="off">
+        <button type="submit" class="btn btn-primary">SEND</button>
+    </form>
+
+    <div class="suggestion-link-container">
+        <a href="/Ryn/suggestion" class="btn btn-outline suggestion-btn" target="_blank">SUGGEST A NEW CAR/EVENT</a>
+    </div>
+</div>
+
+<div id="createRoomModal" class="modal">
+  <div class="modal-overlay"></div>
+  <div class="modal-content">
+    <button id="cancelCreateRoom" class="modal-close">&times;</button>
+    <h3>Create New Room</h3>
+    <form id="createRoomForm">
+      <input type="text" id="roomNameInput" placeholder="Enter room name" required>
+      <button type="submit">Create Room</button>
+    </form>
+  </div>
+</div>
+
+<!-- Debug Info Display -->
+<div id="debugInfo" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; display: none;">
+    <h3>Debug Information</h3>
+    <pre id="debugOutput"></pre>
+    <button id="clearDebugBtn" style="margin-top: 10px;">Clear Debug Info</button>
+</div>
+
+<script src="./app.js"></script>
+<script src="./suggestion.js"></script>
+<script src="./speedometers.js"></script>
+<script src="./track-effects.js"></script>
+<script src="./headlights.js"></script>
+<script src="./livefeed.js"></script>
+<script src="./refresh.js"></script>
+<script src="./racing-api.js"></script>
+<script src="./racingStats.js"></script>
+
+<script>
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+        }
+    });
+
+    document.getElementById('clearDebugBtn').addEventListener('click', function() {
+        document.getElementById('debugOutput').innerText = '';
+    });
+
+    const originalLog = console.log;
+    const originalError = console.error;
+
+    console.log = function() {
+        const output = document.getElementById('debugOutput');
+        const args = Array.from(arguments);
+        output.innerText += args.join(' ') + '\n';
+        originalLog.apply(console, arguments);
+    };
+
+    console.error = function() {
+        const output = document.getElementById('debugOutput');
+        const args = Array.from(arguments);
+        output.innerText += 'ERROR: ' + args.join(' ') + '\n';
+        originalError.apply(console, arguments);
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Create speed lines
+        const speedLines = document.querySelector('.speed-lines');
+        for (let i = 0; i < 10; i++) {
+            const line = document.createElement('div');
+            line.className = 'speed-line';
+            line.style.top = `${Math.random() * 100}%`;
+            line.style.animation = `speedLine ${1 + Math.random() * 2}s linear infinite`;
+            speedLines.appendChild(line);
+        }
+
+        // Race start animation sequence
+        const countdown = document.querySelector('.countdown');
+        const lights = document.querySelectorAll('.light');
+        let count = 3;
+
+        // Countdown sequence
+        const countdownInterval = setInterval(() => {
+            count--;
+            if (count > 0) {
+                countdown.textContent = count;
+            } else {
+                clearInterval(countdownInterval);
+                countdown.textContent = '';
+            }
+        }, 1000);
+
+        // Light sequence
+        let lightIndex = 0;
+        const lightInterval = setInterval(() => {
+            if (lightIndex < lights.length) {
+                lights[lightIndex].classList.add('active');
+                lightIndex++;
+            } else {
+                clearInterval(lightInterval);
+            }
+        }, 500);
+
+        // Remove animation class after animation completes
+        setTimeout(() => {
+            document.body.classList.remove('animating');
+            // Initialize racing feed after animation
+            initRacingFeed();
+        }, 4500);
+    });
+
+    // Add this before the existing DOMContentLoaded event listener
+    // Handle browser back/forward navigation
+    window.addEventListener('popstate', function(event) {
+        if (event.state && event.state.roomId) {
+            // Restore the room state
+            const roomId = event.state.roomId;
+            const roomName = event.state.roomName;
+            showChatRoom(roomId, roomName);
+        } else {
+            // If no room state, show dashboard
+            showDashboard();
+        }
+    });
+
+    // Modify the showChatRoom function to use History API
+    function showChatRoom(roomId, roomName) {
+        // Push the room state to history
+        const state = {
+            roomId: roomId,
+            roomName: roomName
+        };
+        history.pushState(state, '', `/RyjinWebApp/chat?room=${roomId}`);
+        
+        // Show chat container and hide others
+        document.getElementById('authContainer').classList.add('hidden');
+        document.getElementById('dashboardContainer').classList.add('hidden');
+        document.getElementById('chatContainer').classList.remove('hidden');
+        
+        // Update room name display
+        document.getElementById('roomName').textContent = roomName;
+        
+        // Initialize chat room
+        initializeChatRoom(roomId);
+    }
+
+    // Add this function to handle initial page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if we're in a chat room
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomId = urlParams.get('room');
+        const roomName = urlParams.get('name');
+        
+        if (roomId && roomName) {
+            // Restore room state
+            const state = {
+                roomId: roomId,
+                roomName: roomName
+            };
+            history.replaceState(state, '', `/RyjinWebApp/chat?room=${roomId}`);
+            showChatRoom(roomId, roomName);
+        }
+        
+        // Rest of your existing DOMContentLoaded code...
+    });
+</script>
+
+</body>
+</html>
