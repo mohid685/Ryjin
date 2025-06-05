@@ -620,6 +620,14 @@
             <button type="submit" class="btn btn-primary">Register</button>
         </form>
     </div>
+    
+    <!-- Separate div for the racing world button -->
+    <div class="racing-world-btn-container" style="margin-top: 15px; text-align: center;">
+        <a href="racingWorld.jsp" target="_blank" class="btn btn-outline" style="display: inline-block; width: 100%; text-align: center;">
+            <i class="fas fa-flag-checkered"></i> Wanna know what racing is?
+        </a>
+    </div>
+    
     <div class="engine-loader hidden">
         <div class="rpm-gauge">
             <div class="needle"></div>
@@ -687,17 +695,16 @@
     <button id="clearDebugBtn" style="margin-top: 10px;">Clear Debug Info</button>
 </div>
 
-<script src="./app.js"></script>
-<script src="./suggestion.js"></script>
-<script src="./speedometers.js"></script>
 <script src="./track-effects.js"></script>
 <script src="./headlights.js"></script>
 <script src="./livefeed.js"></script>
 <script src="./refresh.js"></script>
 <script src="./racing-api.js"></script>
 <script src="./racingStats.js"></script>
+<script src="./app.js"></script>
 
 <script>
+    
     document.addEventListener('keydown', function(e) {
         if (e.ctrlKey && e.shiftKey && e.key === 'D') {
             const debugInfo = document.getElementById('debugInfo');
@@ -725,6 +732,7 @@
         output.innerText += 'ERROR: ' + args.join(' ') + '\n';
         originalError.apply(console, arguments);
     };
+
 
     document.addEventListener('DOMContentLoaded', function() {
         // Create speed lines

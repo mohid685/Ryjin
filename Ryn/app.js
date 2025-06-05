@@ -3,6 +3,77 @@ let socket = null;
 let currentUser = null;
 let currentRoom = null;
 
+// Storage keys
+const STORAGE_KEYS = {
+    USER_PREFERENCES: 'userPreferences',
+    LAST_ROOM: 'lastRoom',
+    THEME: 'theme',
+    CHAT_HISTORY: 'chatHistory'
+};
+
+// Storage management functions
+function saveUserPreferences(preferences) {
+    if (currentUser) {
+        localStorage.setItem(
+            `${STORAGE_KEYS.USER_PREFERENCES}_${currentUser.username}`,
+            JSON.stringify(preferences)
+        );
+    }
+}
+
+function loadUserPreferences() {
+    if (currentUser) {
+        const preferences = localStorage.getItem(
+            `${STORAGE_KEYS.USER_PREFERENCES}_${currentUser.username}`
+        );
+        if (preferences) {
+            return JSON.parse(preferences);
+        }
+    }
+    return {
+        theme: 'dark',
+        notifications: true,
+        soundEnabled: true
+    };
+}
+
+function saveLastRoom(room) {
+    sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, JSON.stringify(room));
+}
+
+function clearSessionData() {
+    sessionStorage.removeItem(STORAGE_KEYS.LAST_ROOM);
+    sessionStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+}
+
+// Initialize session on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for existing session
+    const username = getCookie('username');
+    if (username) {
+        // User is already logged in
+        currentUser = { username: username };
+        
+        // Load user preferences from localStorage
+        loadUserPreferences();
+        
+        // Restore last room if exists
+        const lastRoom = sessionStorage.getItem(STORAGE_KEYS.LAST_ROOM);
+        if (lastRoom) {
+            currentRoom = JSON.parse(lastRoom);
+            showChatRoom(currentRoom.name);
+        } else {
+            showDashboard();
+        }
+        
+        connectWebSocket();
+    } else {
+        // No active session, show login
+        showLoginTab();
+        connectWebSocket();
+    }
+});
+
 // DOM Elements
 const authContainer = document.getElementById('authContainer');
 const dashboardContainer = document.getElementById('dashboardContainer');
@@ -42,24 +113,11 @@ socket.onmessage = (event) => {
     const message = event.data;
     console.log('Received:', message);
 
-    // Handle room creation response
-    if (message.startsWith('create:')) {
-        const roomName = message.substring(7).trim();
-        currentRoom = { name: roomName };
-        
-        // Reset form and hide modal
-        hideCreateRoomModal();
-        
-        // Show the chat room
-        showChatRoom(roomName);
-        
-        // Reset button state
-        const submitBtn = createRoomForm.querySelector('button[type="submit"]');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Room';
-    }
-    else if (message.includes('Login successful')) {
-        currentUser = { username: document.getElementById('loginUsername').value };
+    if (message.includes('Login successful')) {
+        const username = document.getElementById('loginUsername').value;
+        currentUser = { username: username };
+        // Store user info in cookie
+        setCookie('username', username, 1); // Expires in 1 day
         showDashboard();
     } else if (message.includes('Registration successful')) {
         alert('Registration successful! Please login.');
@@ -77,10 +135,7 @@ socket.onmessage = (event) => {
             }
         }
         displayRooms(rooms);
-    } 
-    
-    
-    
+    }
     else if (message.startsWith('ROOM_CREATED:')) {
         // Handle successful room creation
         const parts = message.split(':');
@@ -127,15 +182,36 @@ socket.onmessage = (event) => {
 }
 
 // Auth functions
-loginForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const username = document.getElementById('loginUsername').value;
-  const password = document.getElementById('loginPassword').value;
-  
-  // Store user info in cookie
-  setCookie('username', username, 1); // Expires in 1 day
-  
-  socket.send(`1.${username}.${password}`);
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    try {
+        // Try REST API login first
+        const response = await AuthAPI.login(username, password);
+        
+        // If REST API login successful
+        if (response.success) {
+            // Store user info in cookie
+            setCookie('username', username, 1);
+            
+            // Also send WebSocket login (for backward compatibility)
+            socket.send(`1.${username}.${password}`);
+            
+            // Load user preferences
+            const preferences = await UserAPI.getPreferences();
+            saveUserPreferences(preferences);
+            
+            // Show dashboard
+            currentUser = { username: username };
+            showDashboard();
+        }
+    } catch (error) {
+        console.error('Login failed:', error);
+        // Fallback to WebSocket-only login
+        socket.send(`1.${username}.${password}`);
+    }
 });
 
 registerForm.addEventListener('submit', (e) => {
@@ -196,18 +272,21 @@ createRoomForm.addEventListener('submit', (e) => {
 });
 // Navigation
 logoutBtn.addEventListener('click', () => {
-  // Clear cookies
-  deleteCookie('username');
-  deleteCookie('JSESSIONID');
-  
-  socket.close();
-  currentUser = null;
-  currentRoom = null;
-  showLoginTab();
-  authContainer.classList.remove('hidden');
-  dashboardContainer.classList.add('hidden');
-  chatContainer.classList.add('hidden');
-  connectWebSocket();
+    // Clear cookies
+    deleteCookie('username');
+    deleteCookie('JSESSIONID');
+    
+    // Clear session storage
+    clearSessionData();
+    
+    socket.close();
+    currentUser = null;
+    currentRoom = null;
+    showLoginTab();
+    authContainer.classList.remove('hidden');
+    dashboardContainer.classList.add('hidden');
+    chatContainer.classList.add('hidden');
+    connectWebSocket();
 });
 
 leaveRoomBtn.addEventListener('click', () => {
@@ -297,6 +376,21 @@ function addMessage(message) {
         messagesContainer.appendChild(messageElement);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+
+    // Store message in session storage
+    if (currentRoom) {
+        const chatHistory = JSON.parse(
+            sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`) || '[]'
+        );
+        chatHistory.push({
+            message,
+            timestamp: new Date().toISOString()
+        });
+        sessionStorage.setItem(
+            `${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`,
+            JSON.stringify(chatHistory)
+        );
+    }
 }
 
 // UI functions
@@ -326,12 +420,22 @@ function showLoginTab() {
 }
 
 function showChatRoom(roomName) {
-  document.getElementById('authContainer').classList.add('hidden');
-  document.getElementById('dashboardContainer').classList.add('hidden');
-  document.getElementById('chatContainer').classList.remove('hidden');
-  document.getElementById('roomName').textContent = roomName;
-  document.getElementById('messagesContainer').innerHTML = '';
+    // Save current room to session storage
+    const room = { name: roomName };
+    saveLastRoom(room);
+    
+    // Show chat container and hide others
+    document.getElementById('authContainer').classList.add('hidden');
+    document.getElementById('dashboardContainer').classList.add('hidden');
+    document.getElementById('chatContainer').classList.remove('hidden');
+    
+    // Update room name display
+    document.getElementById('roomName').textContent = roomName;
+    
+    // Initialize chat room
+    initializeChatRoom(roomName);
 }
+
 // Todo List Functionality
 let todos = [];
 const todoPanel = document.createElement('div');
@@ -409,37 +513,6 @@ function renderTodos() {
         </div>
     `).join('');
 }
-
-// Initialize application
-document.addEventListener('DOMContentLoaded', () => {
-    connectWebSocket();
-    initParticles();
-    initTodoList();
-
-    // Check for existing session
-    const username = getCookie('username');
-    if (username) {
-        currentUser = { username: username };
-        showDashboard();
-    }
-
-    // Add buttons to chat header
-    const chatHeader = document.querySelector('.chat-header');
-    const todoBtn = document.createElement('button');
-    todoBtn.className = 'btn btn-outline';
-    todoBtn.textContent = 'CHECKLIST';
-    todoBtn.addEventListener('click', toggleTodoPanel);
-    chatHeader.appendChild(todoBtn);
-
-    const raceDataBtn = document.createElement('button');
-    raceDataBtn.className = 'btn btn-outline';
-    raceDataBtn.textContent = 'RACE DATA';
-    raceDataBtn.onclick = function() {
-        console.log('Chat header race data button clicked');
-        showRaceData();
-    };
-    chatHeader.appendChild(raceDataBtn);
-});
 
 // Make joinRoom global
 window.joinRoom = joinRoom;
@@ -549,3 +622,28 @@ function setCookie(name, value, days) {
 function deleteCookie(name) {
     document.cookie = name + '=; Max-Age=-99999999; path=/';
 }
+
+// Load chat history when entering a room
+function initializeChatRoom(roomName) {
+    const chatHistory = JSON.parse(
+        sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${roomName}`) || '[]'
+    );
+    
+    // Clear existing messages
+    const messagesContainer = document.getElementById('messagesContainer');
+    messagesContainer.innerHTML = '';
+    
+    // Load chat history
+    chatHistory.forEach(item => {
+        const messageElement = document.createElement('div');
+        messageElement.textContent = item.message;
+        messagesContainer.appendChild(messageElement);
+    });
+    
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// Racing World button handler
+document.getElementById('racingWorldBtn').addEventListener('click', () => {
+    window.location.href = 'racingWorld.jsp';
+});

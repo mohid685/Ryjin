@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/RyjinWebApp.iml" filepath="$PROJECT_DIR$/RyjinWebApp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ryjin-webapp.iml" filepath="$PROJECT_DIR$/ryjin-webapp.iml" />
     </modules>
   </component>
 </project>
