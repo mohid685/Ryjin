@@ -720,16 +720,32 @@ createRoomForm.addEventListener('submit', (e) => {
     }
 });
 // Navigation
-// logoutBtn.addEventListener('click', () => {
-//     socket.close();
-//     currentUser = null;
-//     currentRoom = null;
-//     showLoginTab();
-//     authContainer.classList.remove('hidden');
-//     dashboardContainer.classList.add('hidden');
-//     chatContainer.classList.add('hidden');
-//     connectWebSocket();
-// });
+logoutBtn.addEventListener('click', () => {
+    // socket.close();
+    // currentUser = null;
+    // currentRoom = null;
+    // showLoginTab();
+    // authContainer.classList.remove('hidden');
+    // dashboardContainer.classList.add('hidden');
+    // chatContainer.classList.add('hidden');
+    // connectWebSocket();
+
+    socket.close();
+    currentUser = null;
+    currentRoom = null;
+    clearUserCredentials(); // Clear saved credentials
+    sessionStorage.clear(); // Clear session data
+    showLoginTab();
+    authContainer.classList.remove('hidden');
+    dashboardContainer.classList.add('hidden');
+    chatContainer.classList.add('hidden');
+    
+    // Update URL to base
+    history.pushState(null, '', '/Ryn/index.html');
+    connectWebSocket();
+});
+
+
 
 leaveRoomBtn.addEventListener('click', () => {
   socket.send('/exit');
@@ -1198,21 +1214,21 @@ document.getElementById('racingWorldBtn').addEventListener('click', () => {
 });
 
 
-// Modified logout function
-function logout() {
-    socket.close();
-    currentUser = null;
-    currentRoom = null;
-    clearUserCredentials(); // Clear saved credentials
-    sessionStorage.clear(); // Clear session data
-    showLoginTab();
-    authContainer.classList.remove('hidden');
-    dashboardContainer.classList.add('hidden');
-    chatContainer.classList.add('hidden');
+// // Modified logout function
+// function logout() {
+//     socket.close();
+//     currentUser = null;
+//     currentRoom = null;
+//     clearUserCredentials(); // Clear saved credentials
+//     sessionStorage.clear(); // Clear session data
+//     showLoginTab();
+//     authContainer.classList.remove('hidden');
+//     dashboardContainer.classList.add('hidden');
+//     chatContainer.classList.add('hidden');
     
-    // Update URL to base
-    history.pushState(null, '', '/Ryn/index.html');
-    connectWebSocket();
-}
+//     // Update URL to base
+//     history.pushState(null, '', '/Ryn/index.html');
+//     connectWebSocket();
+// }
 
-logoutBtn.addEventListener('click', logout);
+// logoutBtn.addEventListener('click', logout);
