@@ -620,6 +620,13 @@
             <button type="submit" class="btn btn-primary">Register</button>
         </form>
     </div>
+
+    <!-- Separate Login Button
+    <div class="login-btn-container" style="margin-top: 15px; text-align: center;">
+        <a href="dashboard.jsp" class="btn btn-primary" style="display: inline-block; width: 100%; text-align: center;">
+            Login
+        </a>
+    </div> -->
     
     <!-- Separate div for the racing world button -->
     <div class="racing-world-btn-container" style="margin-top: 15px; text-align: center;">
@@ -782,58 +789,93 @@
 
     // Add this before the existing DOMContentLoaded event listener
     // Handle browser back/forward navigation
+    // window.addEventListener('popstate', function(event) {
+    //     if (event.state && event.state.roomId) {
+    //         // Restore the room state
+    //         const roomId = event.state.roomId;
+    //         const roomName = event.state.roomName;
+    //         showChatRoom(roomId, roomName);
+    //     } else {
+    //         // If no room state, show dashboard
+    //         showDashboard();
+    //     }
+    // });
+
+    // Handle browser back/forward navigation
     window.addEventListener('popstate', function(event) {
-        if (event.state && event.state.roomId) {
-            // Restore the room state
-            const roomId = event.state.roomId;
-            const roomName = event.state.roomName;
-            showChatRoom(roomId, roomName);
-        } else {
-            // If no room state, show dashboard
+    if (event.state && event.state.roomId) {
+        // Restore the room state
+        const roomId = event.state.roomId;
+        showChatRoom(roomId);
+    } else {
+        // If no room state, show dashboard instead of login
+        if (currentUser) {  // Only show dashboard if user is logged in
+            // Update URL to base URL
+            history.pushState(null, '', '/Ryn/index.html');
             showDashboard();
+        } else {
+            showLoginTab();
         }
-    });
-
-    // Modify the showChatRoom function to use History API
-    function showChatRoom(roomId, roomName) {
-        // Push the room state to history
-        const state = {
-            roomId: roomId,
-            roomName: roomName
-        };
-        history.pushState(state, '', `/RyjinWebApp/chat?room=${roomId}`);
-        
-        // Show chat container and hide others
-        document.getElementById('authContainer').classList.add('hidden');
-        document.getElementById('dashboardContainer').classList.add('hidden');
-        document.getElementById('chatContainer').classList.remove('hidden');
-        
-        // Update room name display
-        document.getElementById('roomName').textContent = roomName;
-        
-        // Initialize chat room
-        initializeChatRoom(roomId);
     }
+});     
 
-    // Add this function to handle initial page load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Check if we're in a chat room
-        const urlParams = new URLSearchParams(window.location.search);
-        const roomId = urlParams.get('room');
-        const roomName = urlParams.get('name');
-        
-        if (roomId && roomName) {
-            // Restore room state
-            const state = {
-                roomId: roomId,
-                roomName: roomName
-            };
-            history.replaceState(state, '', `/RyjinWebApp/chat?room=${roomId}`);
-            showChatRoom(roomId, roomName);
-        }
-        
-        // Rest of your existing DOMContentLoaded code...
-    });
+//     function showChatRoom(roomId, roomName) {
+//     // Change the URL to use the correct path
+//     const state = {
+//         roomId: roomId,
+//         roomName: roomName
+//     };
+//     // Update this line to use the correct path
+//     history.pushState(state, '', `/Ryn/index.html?room=${roomId}&name=${roomName}`);
+    
+//     // Show chat container and hide others
+//     document.getElementById('authContainer').classList.add('hidden');
+//     document.getElementById('dashboardContainer').classList.add('hidden');
+//     document.getElementById('chatContainer').classList.remove('hidden');
+    
+//     // Update room name display
+//     document.getElementById('roomName').textContent = roomName;
+    
+//     // Initialize chat room
+//     initializeChatRoom(roomId);
+// }
+
+
+function showChatRoom(roomId) {
+    // Change the URL to use only the room ID
+    const state = {
+        roomId: roomId
+    };
+    
+    // Update URL to only include room ID
+    history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+    
+    // Show chat container and hide others
+    document.getElementById('authContainer').classList.add('hidden');
+    document.getElementById('dashboardContainer').classList.add('hidden');
+    document.getElementById('chatContainer').classList.remove('hidden');
+    
+    // Initialize chat room
+    initializeChatRoom(roomId);
+}
+
+// Handle initial page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're in a chat room
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room');
+    
+    if (roomId) {
+        showChatRoom(roomId);
+    } else if (currentUser) {  // Show dashboard if user is logged in
+        // Update URL to base URL
+        history.pushState(null, '', '/Ryn/index.html');
+        showDashboard();
+    } else {
+        // If no room parameters and no logged in user, show login
+        showLoginTab();
+    }
+});
 </script>
 
 </body>

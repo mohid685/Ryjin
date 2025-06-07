@@ -3,75 +3,53 @@ let socket = null;
 let currentUser = null;
 let currentRoom = null;
 
-// Storage keys
-const STORAGE_KEYS = {
-    USER_PREFERENCES: 'userPreferences',
-    LAST_ROOM: 'lastRoom',
-    THEME: 'theme',
-    CHAT_HISTORY: 'chatHistory'
-};
+// // Storage keys
+// const STORAGE_KEYS = {
+//     USER_PREFERENCES: 'userPreferences',
+//     LAST_ROOM: 'lastRoom',
+//     THEME: 'theme',
+//     CHAT_HISTORY: 'chatHistory'
+// };
 
-// Storage management functions
-function saveUserPreferences(preferences) {
-    if (currentUser) {
-        localStorage.setItem(
-            `${STORAGE_KEYS.USER_PREFERENCES}_${currentUser.username}`,
-            JSON.stringify(preferences)
-        );
-    }
-}
+// // Storage management functions
+// function saveUserPreferences(preferences) {
+//     if (currentUser) {
+//         localStorage.setItem(
+//             `${STORAGE_KEYS.USER_PREFERENCES}_${currentUser.username}`,
+//             JSON.stringify(preferences)
+//         );
+//     }
+// }
 
-function loadUserPreferences() {
-    if (currentUser) {
-        const preferences = localStorage.getItem(
-            `${STORAGE_KEYS.USER_PREFERENCES}_${currentUser.username}`
-        );
-        if (preferences) {
-            return JSON.parse(preferences);
-        }
-    }
-    return {
-        theme: 'dark',
-        notifications: true,
-        soundEnabled: true
-    };
-}
+// function loadUserPreferences() {
+//     if (currentUser) {
+//         const preferences = localStorage.getItem(
+//             `${STORAGE_KEYS.USER_PREFERENCES}_${currentUser.username}`
+//         );
+//         if (preferences) {
+//             return JSON.parse(preferences);
+//         }
+//     }
+//     return {
+//         theme: 'dark',
+//         notifications: true,
+//         soundEnabled: true
+//     };
+// }
 
-function saveLastRoom(room) {
-    sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, JSON.stringify(room));
-}
+// function saveLastRoom(room) {
+//     sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, JSON.stringify(room));
+// }
 
-function clearSessionData() {
-    sessionStorage.removeItem(STORAGE_KEYS.LAST_ROOM);
-    sessionStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
-}
+// function clearSessionData() {
+//     sessionStorage.removeItem(STORAGE_KEYS.LAST_ROOM);
+//     sessionStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+// }
 
-// Initialize session on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Check for existing session
-    const username = getCookie('username');
-    if (username) {
-        // User is already logged in
-        currentUser = { username: username };
-        
-        // Load user preferences from localStorage
-        loadUserPreferences();
-        
-        // Restore last room if exists
-        const lastRoom = sessionStorage.getItem(STORAGE_KEYS.LAST_ROOM);
-        if (lastRoom) {
-            currentRoom = JSON.parse(lastRoom);
-            showChatRoom(currentRoom.name);
-        } else {
-            showDashboard();
-        }
-        
-        connectWebSocket();
-    } else {
-        // No active session, show login
-        showLoginTab();
-        connectWebSocket();
-    }
+    // Remove cookie check and always show login
+    showLoginTab();
+    connectWebSocket();
 });
 
 // DOM Elements
@@ -117,7 +95,7 @@ socket.onmessage = (event) => {
         const username = document.getElementById('loginUsername').value;
         currentUser = { username: username };
         // Store user info in cookie
-        setCookie('username', username, 1); // Expires in 1 day
+        // setCookie('username', username, 1); // Expires in 1 day
         showDashboard();
     } else if (message.includes('Registration successful')) {
         alert('Registration successful! Please login.');
@@ -193,18 +171,13 @@ loginForm.addEventListener('submit', async (e) => {
         
         // If REST API login successful
         if (response.success) {
-            // Store user info in cookie
-            setCookie('username', username, 1);
+            // Set current user
+            currentUser = { username: username };
             
-            // Also send WebSocket login (for backward compatibility)
+            // Send WebSocket login
             socket.send(`1.${username}.${password}`);
             
-            // Load user preferences
-            const preferences = await UserAPI.getPreferences();
-            saveUserPreferences(preferences);
-            
             // Show dashboard
-            currentUser = { username: username };
             showDashboard();
         }
     } catch (error) {
@@ -272,13 +245,6 @@ createRoomForm.addEventListener('submit', (e) => {
 });
 // Navigation
 logoutBtn.addEventListener('click', () => {
-    // Clear cookies
-    deleteCookie('username');
-    deleteCookie('JSESSIONID');
-    
-    // Clear session storage
-    clearSessionData();
-    
     socket.close();
     currentUser = null;
     currentRoom = null;
@@ -335,6 +301,65 @@ messageForm.addEventListener('submit', (e) => {
   }
 });
 
+// function addMessage(message) {
+//     if (message.includes('Welcome to GTR Chat Server!') ||
+//         message.includes('Joined room:') ||
+//         message.includes('=== Chat Room:') ||
+//         message.includes('You joined at:') ||
+//         message.includes('Type \'/exit\' to leave the room') ||
+//         message.includes('--- Chat History') ||
+//         message.startsWith('[SYSTEM]')) {
+//         return;
+//     }
+
+//     if (!message.includes(':')) {
+//         return;
+//     }
+
+//     const messageElement = document.createElement('div');
+//     messageElement.className = 'message other';
+
+//     let cleanMessage = message
+//         .replace(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\]/g, '')
+//         .replace(/[^\x20-\x7E]/g, '')
+//         .trim();
+
+//     if (cleanMessage) {
+//         const messageWrapper = document.createElement('div');
+//         messageWrapper.className = 'message-wrapper';
+
+//         const personAvatar = document.createElement('div');
+//         personAvatar.className = 'person-avatar';
+
+//         const messageContent = document.createElement('div');
+//         messageContent.className = 'message-content';
+//         messageContent.textContent = cleanMessage;
+
+//         messageWrapper.appendChild(personAvatar);
+//         messageWrapper.appendChild(messageContent);
+//         messageElement.appendChild(messageWrapper);
+
+//         messagesContainer.appendChild(messageElement);
+//         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+//     }
+
+//     // Store message in session storage
+//     if (currentRoom) {
+//         const chatHistory = JSON.parse(
+//             sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`) || '[]'
+//         );
+//         chatHistory.push({
+//             message,
+//             timestamp: new Date().toISOString()
+//         });
+//         sessionStorage.setItem(
+//             `${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`,
+//             JSON.stringify(chatHistory)
+//         );
+//     }
+// }
+
+
 function addMessage(message) {
     if (message.includes('Welcome to GTR Chat Server!') ||
         message.includes('Joined room:') ||
@@ -376,21 +401,6 @@ function addMessage(message) {
         messagesContainer.appendChild(messageElement);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-
-    // Store message in session storage
-    if (currentRoom) {
-        const chatHistory = JSON.parse(
-            sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`) || '[]'
-        );
-        chatHistory.push({
-            message,
-            timestamp: new Date().toISOString()
-        });
-        sessionStorage.setItem(
-            `${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`,
-            JSON.stringify(chatHistory)
-        );
-    }
 }
 
 // UI functions
@@ -419,21 +429,43 @@ function showLoginTab() {
   tabBtns[0].click();
 }
 
-function showChatRoom(roomName) {
-    // Save current room to session storage
-    const room = { name: roomName };
-    saveLastRoom(room);
+// function showChatRoom(roomId, roomName) {
+//     // Change the URL to use the correct path
+//     const state = {
+//         roomId: roomId,
+//         roomName: roomName
+//     };
+//     // Update this line to use the correct path
+//     history.pushState(state, '', `/Ryn/index.html?room=${roomId}&name=${roomName}`);
+    
+//     // Show chat container and hide others
+//     document.getElementById('authContainer').classList.add('hidden');
+//     document.getElementById('dashboardContainer').classList.add('hidden');
+//     document.getElementById('chatContainer').classList.remove('hidden');
+    
+//     // Update room name display
+//     document.getElementById('roomName').textContent = roomName;
+    
+//     // Initialize chat room
+//     initializeChatRoom(roomId);
+// }
+
+function showChatRoom(roomId) {
+    // Change the URL to use only the room ID
+    const state = {
+        roomId: roomId
+    };
+    
+    // Update URL to only include room ID
+    history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
     
     // Show chat container and hide others
     document.getElementById('authContainer').classList.add('hidden');
     document.getElementById('dashboardContainer').classList.add('hidden');
     document.getElementById('chatContainer').classList.remove('hidden');
     
-    // Update room name display
-    document.getElementById('roomName').textContent = roomName;
-    
     // Initialize chat room
-    initializeChatRoom(roomName);
+    initializeChatRoom(roomId);
 }
 
 // Todo List Functionality
@@ -587,59 +619,67 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-// Session and Cookie Management
-function initializeSession() {
-    // Check for existing session
-    const sessionId = getCookie('JSESSIONID');
-    if (!sessionId) {
-        console.log('No active session found');
-        return false;
-    }
-    return true;
-}
+// // Session and Cookie Management
+// function initializeSession() {
+//     // Check for existing session
+//     const sessionId = getCookie('JSESSIONID');
+//     if (!sessionId) {
+//         console.log('No active session found');
+//         return false;
+//     }
+//     return true;
+// }
 
-function getCookie(name) {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for(let i = 0; i < ca.length; i++) {
-        let c = ca[i];
-        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
-}
+// function getCookie(name) {
+//     const nameEQ = name + "=";
+//     const ca = document.cookie.split(';');
+//     for(let i = 0; i < ca.length; i++) {
+//         let c = ca[i];
+//         while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+//         if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+//     }
+//     return null;
+// }
 
-function setCookie(name, value, days) {
-    let expires = "";
-    if (days) {
-        const date = new Date();
-        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-        expires = "; expires=" + date.toUTCString();
-    }
-    document.cookie = name + "=" + (value || "") + expires + "; path=/";
-}
+// function setCookie(name, value, days) {
+//     let expires = "";
+//     if (days) {
+//         const date = new Date();
+//         date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+//         expires = "; expires=" + date.toUTCString();
+//     }
+//     document.cookie = name + "=" + (value || "") + expires + "; path=/";
+// }
 
-function deleteCookie(name) {
-    document.cookie = name + '=; Max-Age=-99999999; path=/';
-}
+// function deleteCookie(name) {
+//     document.cookie = name + '=; Max-Age=-99999999; path=/';
+// }
 
-// Load chat history when entering a room
-function initializeChatRoom(roomName) {
-    const chatHistory = JSON.parse(
-        sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${roomName}`) || '[]'
-    );
+// // Load chat history when entering a room
+// function initializeChatRoom(roomName) {
+//     const chatHistory = JSON.parse(
+//         sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${roomName}`) || '[]'
+//     );
     
+//     // Clear existing messages
+//     const messagesContainer = document.getElementById('messagesContainer');
+//     messagesContainer.innerHTML = '';
+    
+//     // Load chat history
+//     chatHistory.forEach(item => {
+//         const messageElement = document.createElement('div');
+//         messageElement.textContent = item.message;
+//         messagesContainer.appendChild(messageElement);
+//     });
+    
+//     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+// }
+
+
+function initializeChatRoom(roomId) {
     // Clear existing messages
     const messagesContainer = document.getElementById('messagesContainer');
     messagesContainer.innerHTML = '';
-    
-    // Load chat history
-    chatHistory.forEach(item => {
-        const messageElement = document.createElement('div');
-        messageElement.textContent = item.message;
-        messagesContainer.appendChild(messageElement);
-    });
-    
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
