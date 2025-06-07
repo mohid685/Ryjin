@@ -859,22 +859,37 @@
 //     initializeChatRoom(roomId);
 // }
 
-// Modified showChatRoom function
-function showChatRoom(roomId) {
-    const state = { roomId: roomId };
-    history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+// // Modified showChatRoom function
+// function showChatRoom(roomId) {
+//     const state = { roomId: roomId };
+//     history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+    
+//     document.getElementById('authContainer').classList.add('hidden');
+//     document.getElementById('dashboardContainer').classList.add('hidden');
+//     document.getElementById('chatContainer').classList.remove('hidden');
+    
+//     // Update room name display
+//     document.getElementById('roomName').textContent = roomId;
+    
+//     // Save current room
+//     saveLastRoom(roomId);
+    
+//     initializeChatRoom(roomId);
+// }
+
+// Modified showChatRoom to handle URL properly
+function showChatRoom(roomName) {
+    const state = { roomName: roomName };
+    history.pushState(state, '', `/Ryn/index.html?room=${roomName}`);
     
     document.getElementById('authContainer').classList.add('hidden');
     document.getElementById('dashboardContainer').classList.add('hidden');
     document.getElementById('chatContainer').classList.remove('hidden');
     
     // Update room name display
-    document.getElementById('roomName').textContent = roomId;
+    document.getElementById('roomName').textContent = roomName;
     
-    // Save current room
-    saveLastRoom(roomId);
-    
-    initializeChatRoom(roomId);
+    initializeChatRoom(roomName);
 }
 
 // Handle initial page load

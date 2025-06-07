@@ -42,16 +42,34 @@ function clearUserCredentials() {
     localStorage.removeItem(STORAGE_KEYS.USER_CREDENTIALS);
 }
 
-// Save last room
-function saveLastRoom(roomId) {
-    sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, roomId);
+// // Save last room
+// function saveLastRoom(roomId) {
+//     sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, roomId);
+// }
+
+// Modified storage functions to handle room numbers properly
+function saveLastRoom(roomId, roomName, roomNumber) {
+    const roomData = {
+        id: roomId,
+        name: roomName,
+        number: roomNumber,
+        timestamp: Date.now()
+    };
+    sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, JSON.stringify(roomData));
 }
 
-// Load last room
+// // Load last room
+// function loadLastRoom() {
+//     return sessionStorage.getItem(STORAGE_KEYS.LAST_ROOM);
+// }
+
 function loadLastRoom() {
-    return sessionStorage.getItem(STORAGE_KEYS.LAST_ROOM);
+    const roomData = sessionStorage.getItem(STORAGE_KEYS.LAST_ROOM);
+    if (roomData) {
+        return JSON.parse(roomData);
+    }
+    return null;
 }
-
 
 
 
@@ -230,7 +248,240 @@ const tabBtns = document.querySelectorAll('.tab-btn');
 // }
 
 
-// Modified WebSocket connection with auto-login
+// // Modified WebSocket connection with auto-login
+// function connectWebSocket() {
+//     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+//     socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
+
+//     socket.onopen = () => {
+//         console.log('Connected to server');
+        
+//         // Try to auto-login if credentials exist
+//         const credentials = loadUserCredentials();
+//         if (credentials && !currentUser) {
+//             console.log('Auto-logging in...');
+//             socket.send(`1.${credentials.username}.${credentials.password}`);
+//         }
+//     };
+
+//     socket.onmessage = (event) => {
+//         const message = event.data;
+//         console.log('Received:', message);
+
+//         if (message.includes('Login successful')) {
+//             const credentials = loadUserCredentials();
+//             if (credentials) {
+//                 currentUser = { username: credentials.username };
+//                 console.log('Auto-login successful');
+                
+//                 // Check if we should restore a room or show dashboard
+//                 const urlParams = new URLSearchParams(window.location.search);
+//                 const roomId = urlParams.get('room');
+                
+//                 if (roomId) {
+//                     // We're in a room, join it
+//                     console.log('Rejoining room:', roomId);
+//                     socket.send(`join:${roomId}`);
+//                 } else {
+//                     // Show dashboard and load rooms
+//                     showDashboard();
+//                 }
+//             }
+//         } else if (message.includes('Registration successful')) {
+//             alert('Registration successful! Please login.');
+//             showLoginTab();
+//         } else if (message.includes('Available rooms:')) {
+//             const rooms = [];
+//             const lines = message.split('\n');
+//             for (let i = 1; i < lines.length; i++) {
+//                 const line = lines[i];
+//                 if (line.startsWith('-')) {
+//                     const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
+//                     if (match) {
+//                         rooms.push({ name: match[1], createdBy: match[2] });
+//                     }
+//                 }
+//             }
+//             displayRooms(rooms);
+//         } else if (message.startsWith('ROOM_CREATED:')) {
+//             const parts = message.split(':');
+//             const roomId = parts[1];
+//             const roomName = parts.slice(2).join(':').split('\n')[0];
+            
+//             console.log('Room created:', roomId, roomName);
+//             hideCreateRoomModal();
+//             document.getElementById('roomNameInput').value = '';
+            
+//             const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+//             submitBtn.disabled = false;
+//             submitBtn.textContent = 'Create Room';
+            
+//             currentRoom = { id: roomId, name: roomName };
+//             saveLastRoom(roomId);
+//             showChatRoom(roomName);
+//         } else if (message.includes('=== Chat Room:')) {
+//             const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
+//             if (roomNameMatch) {
+//                 currentRoom = { name: roomNameMatch[1] };
+//                 saveLastRoom(roomNameMatch[1]);
+//                 showChatRoom(currentRoom.name);
+//             }
+//             addMessage(message);
+//         } else if (message.startsWith('ERROR:')) {
+//             alert(message);
+//             const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+//             if (submitBtn) {
+//                 submitBtn.disabled = false;
+//                 submitBtn.textContent = 'Create Room';
+//             }
+//         } else {
+//             addMessage(message);
+//         }
+//     };
+
+//     socket.onclose = () => {
+//         console.log('Disconnected from server');
+//         setTimeout(connectWebSocket, 3000);
+//     };
+// }
+
+
+// // Modified WebSocket connection with proper room rejoining
+// function connectWebSocket() {
+//     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+//     socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
+
+//     socket.onopen = () => {
+//         console.log('Connected to server');
+        
+//         // Try to auto-login if credentials exist
+//         const credentials = loadUserCredentials();
+//         if (credentials && !currentUser) {
+//             console.log('Auto-logging in...');
+//             socket.send(`1.${credentials.username}.${credentials.password}`);
+//         }
+//     };
+
+//     socket.onmessage = (event) => {
+//         const message = event.data;
+//         console.log('Received:', message);
+
+//         if (message.includes('Login successful')) {
+//             const credentials = loadUserCredentials();
+//             if (credentials) {
+//                 currentUser = { username: credentials.username };
+//                 console.log('Auto-login successful');
+                
+//                 // Check if we should restore a room or show dashboard
+//                 const urlParams = new URLSearchParams(window.location.search);
+//                 const roomIdFromUrl = urlParams.get('room');
+                
+//                 if (roomIdFromUrl) {
+//                     // First get the list of rooms to find the room number
+//                     console.log('Need to rejoin room:', roomIdFromUrl);
+//                     socket.send('3'); // Get rooms list first
+//                 } else {
+//                     // Show dashboard and load rooms
+//                     showDashboard();
+//                 }
+//             }
+//         } else if (message.includes('Registration successful')) {
+//             alert('Registration successful! Please login.');
+//             showLoginTab();
+//         } else if (message.includes('Available rooms:')) {
+//             const rooms = [];
+//             const lines = message.split('\n');
+//             for (let i = 1; i < lines.length; i++) {
+//                 const line = lines[i];
+//                 if (line.startsWith('-')) {
+//                     const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
+//                     if (match) {
+//                         rooms.push({ name: match[1], createdBy: match[2], number: i });
+//                     }
+//                 }
+//             }
+            
+//             // Check if we need to rejoin a room after getting the rooms list
+//             const urlParams = new URLSearchParams(window.location.search);
+//             const roomIdFromUrl = urlParams.get('room');
+            
+//             if (roomIdFromUrl && currentUser) {
+//                 // Find the room number for this room name
+//                 const targetRoom = rooms.find(room => room.name === roomIdFromUrl);
+//                 if (targetRoom) {
+//                     console.log('Rejoining room number:', targetRoom.number);
+//                     currentRoom = { 
+//                         id: roomIdFromUrl, 
+//                         name: roomIdFromUrl, 
+//                         number: targetRoom.number 
+//                     };
+//                     socket.send(`join:${roomIdFromUrl}`); // Try joining with room name first
+//                     showChatRoom(roomIdFromUrl);
+//                 } else {
+//                     console.log('Room not found, showing dashboard');
+//                     showDashboard();
+//                 }
+//             } else {
+//                 displayRooms(rooms);
+//             }
+//         } else if (message.startsWith('ROOM_CREATED:')) {
+//             const parts = message.split(':');
+//             const roomNumber = parts[1];
+//             const roomName = parts.slice(2).join(':').split('\n')[0];
+            
+//             console.log('Room created:', roomNumber, roomName);
+//             hideCreateRoomModal();
+//             document.getElementById('roomNameInput').value = '';
+            
+//             const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+//             submitBtn.disabled = false;
+//             submitBtn.textContent = 'Create Room';
+            
+//             currentRoom = { id: roomName, name: roomName, number: roomNumber };
+//             saveLastRoom(roomName, roomName, roomNumber);
+//             showChatRoom(roomName);
+//         } else if (message.includes('=== Chat Room:')) {
+//             const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
+//             if (roomNameMatch) {
+//                 const roomName = roomNameMatch[1];
+//                 if (!currentRoom) {
+//                     currentRoom = { name: roomName, id: roomName };
+//                 }
+//                 showChatRoom(roomName);
+//             }
+//             addMessage(message);
+//         } else if (message.startsWith('ERROR:')) {
+//             // Handle room join errors - might need to try with room number
+//             if (message.includes('For input string:')) {
+//                 const urlParams = new URLSearchParams(window.location.search);
+//                 const roomIdFromUrl = urlParams.get('room');
+                
+//                 if (roomIdFromUrl) {
+//                     // Try to find room by number instead
+//                     console.log('Trying alternative room join method');
+//                     // Request rooms list again to get proper room numbers
+//                     socket.send('3');
+//                 }
+//             } else {
+//                 alert(message);
+//                 const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+//                 if (submitBtn) {
+//                     submitBtn.disabled = false;
+//                     submitBtn.textContent = 'Create Room';
+//                 }
+//             }
+//         } else {
+//             addMessage(message);
+//         }
+//     };
+
+//     socket.onclose = () => {
+//         console.log('Disconnected from server');
+//         setTimeout(connectWebSocket, 3000);
+//     };
+// }
+
+// Modified WebSocket connection with proper room rejoining
 function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
@@ -258,20 +509,17 @@ function connectWebSocket() {
                 
                 // Check if we should restore a room or show dashboard
                 const urlParams = new URLSearchParams(window.location.search);
-                const roomId = urlParams.get('room');
+                const roomIdFromUrl = urlParams.get('room');
                 
-                if (roomId) {
-                    // We're in a room, join it
-                    console.log('Rejoining room:', roomId);
-                    socket.send(`join:${roomId}`);
+                if (roomIdFromUrl) {
+                    // First get the list of rooms to find the room number
+                    console.log('Need to rejoin room:', roomIdFromUrl);
+                    socket.send('3'); // Get rooms list first
                 } else {
                     // Show dashboard and load rooms
                     showDashboard();
                 }
             }
-        } else if (message.includes('Registration successful')) {
-            alert('Registration successful! Please login.');
-            showLoginTab();
         } else if (message.includes('Available rooms:')) {
             const rooms = [];
             const lines = message.split('\n');
@@ -280,17 +528,40 @@ function connectWebSocket() {
                 if (line.startsWith('-')) {
                     const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
                     if (match) {
-                        rooms.push({ name: match[1], createdBy: match[2] });
+                        rooms.push({ name: match[1], createdBy: match[2], number: i });
                     }
                 }
             }
-            displayRooms(rooms);
+            
+            // Check if we need to rejoin a room after getting the rooms list
+            const urlParams = new URLSearchParams(window.location.search);
+            const roomIdFromUrl = urlParams.get('room');
+            
+            if (roomIdFromUrl && currentUser) {
+                // Find the room number for this room name
+                const targetRoom = rooms.find(room => room.name === roomIdFromUrl);
+                if (targetRoom) {
+                    console.log('Rejoining room number:', targetRoom.number);
+                    currentRoom = { 
+                        id: roomIdFromUrl, 
+                        name: roomIdFromUrl, 
+                        number: targetRoom.number 
+                    };
+                    socket.send(`join:${targetRoom.number}`); // Send room number instead of name
+                    showChatRoom(roomIdFromUrl);
+                } else {
+                    console.log('Room not found, showing dashboard');
+                    showDashboard();
+                }
+            } else {
+                displayRooms(rooms);
+            }
         } else if (message.startsWith('ROOM_CREATED:')) {
             const parts = message.split(':');
-            const roomId = parts[1];
+            const roomNumber = parts[1];
             const roomName = parts.slice(2).join(':').split('\n')[0];
             
-            console.log('Room created:', roomId, roomName);
+            console.log('Room created:', roomNumber, roomName);
             hideCreateRoomModal();
             document.getElementById('roomNameInput').value = '';
             
@@ -298,15 +569,17 @@ function connectWebSocket() {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Create Room';
             
-            currentRoom = { id: roomId, name: roomName };
-            saveLastRoom(roomId);
+            currentRoom = { id: roomName, name: roomName, number: roomNumber };
+            saveLastRoom(roomName);
             showChatRoom(roomName);
         } else if (message.includes('=== Chat Room:')) {
             const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
             if (roomNameMatch) {
-                currentRoom = { name: roomNameMatch[1] };
-                saveLastRoom(roomNameMatch[1]);
-                showChatRoom(currentRoom.name);
+                const roomName = roomNameMatch[1];
+                if (!currentRoom) {
+                    currentRoom = { name: roomName, id: roomName };
+                }
+                showChatRoom(roomName);
             }
             addMessage(message);
         } else if (message.startsWith('ERROR:')) {
@@ -326,6 +599,15 @@ function connectWebSocket() {
         setTimeout(connectWebSocket, 3000);
     };
 }
+
+// Modified joinRoom function to use room numbers
+function joinRoom(roomNumber, roomName) {
+    console.log('Joining room:', roomNumber, roomName);
+    currentRoom = { id: roomName, name: roomName, number: roomNumber };
+    saveLastRoom(roomName);
+    socket.send(`join:${roomNumber}`); // Send room number instead of name
+}
+
 
 // // Auth functions
 // loginForm.addEventListener('submit', async (e) => {
@@ -473,17 +755,33 @@ tabBtns.forEach(btn => {
   });
 });
 
+// function displayRooms(rooms) {
+//   roomsList.innerHTML = rooms.map((room, index) => `
+//       <div class="room-card" onclick="joinRoom(${index + 1})">
+//           <h3>${room.name}</h3>
+//       </div>
+//   `).join('');
+// }
+
+// Modified displayRooms to store room numbers properly
 function displayRooms(rooms) {
-  roomsList.innerHTML = rooms.map((room, index) => `
-      <div class="room-card" onclick="joinRoom(${index + 1})">
-          <h3>${room.name}</h3>
-      </div>
-  `).join('');
+    roomsList.innerHTML = rooms.map((room, index) => `
+        <div class="room-card" onclick="joinRoom(${index + 1}, '${room.name}')">
+            <h3>${room.name}</h3>
+        </div>
+    `).join('');
 }
 
-function joinRoom(roomNumber) {
-  socket.send(`join:${roomNumber}`);
-}
+// function joinRoom(roomNumber) {
+//   socket.send(`join:${roomNumber}`);
+// }
+
+// function joinRoom(roomNumber, roomName) {
+//     console.log('Joining room:', roomNumber, roomName);
+//     currentRoom = { id: roomName, name: roomName, number: roomNumber };
+//     saveLastRoom(roomName, roomName, roomNumber);
+//     socket.send(`join:${roomNumber}`);
+// }
 
 // Message handling
 messageForm.addEventListener('submit', (e) => {
@@ -647,22 +945,37 @@ function showLoginTab() {
 //     initializeChatRoom(roomId);
 // }
 
-// Modified showChatRoom function
-function showChatRoom(roomId) {
-    const state = { roomId: roomId };
-    history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+// // Modified showChatRoom function
+// function showChatRoom(roomId) {
+//     const state = { roomId: roomId };
+//     history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+    
+//     document.getElementById('authContainer').classList.add('hidden');
+//     document.getElementById('dashboardContainer').classList.add('hidden');
+//     document.getElementById('chatContainer').classList.remove('hidden');
+    
+//     // Update room name display
+//     document.getElementById('roomName').textContent = roomId;
+    
+//     // Save current room
+//     saveLastRoom(roomId);
+    
+//     initializeChatRoom(roomId);
+// }
+
+// Modified showChatRoom to handle URL properly
+function showChatRoom(roomName) {
+    const state = { roomName: roomName };
+    history.pushState(state, '', `/Ryn/index.html?room=${roomName}`);
     
     document.getElementById('authContainer').classList.add('hidden');
     document.getElementById('dashboardContainer').classList.add('hidden');
     document.getElementById('chatContainer').classList.remove('hidden');
     
     // Update room name display
-    document.getElementById('roomName').textContent = roomId;
+    document.getElementById('roomName').textContent = roomName;
     
-    // Save current room
-    saveLastRoom(roomId);
-    
-    initializeChatRoom(roomId);
+    initializeChatRoom(roomName);
 }
 
 // Todo List Functionality
