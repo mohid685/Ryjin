@@ -3,6 +3,58 @@ let socket = null;
 let currentUser = null;
 let currentRoom = null;
 
+
+const STORAGE_KEYS = {
+    USER_CREDENTIALS: 'userCredentials',
+    LAST_ROOM: 'lastRoom',
+    THEME: 'theme'
+};
+
+
+// Store user credentials securely (you might want to encrypt this)
+function saveUserCredentials(username, password) {
+    const credentials = {
+        username: username,
+        password: password,
+        timestamp: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEYS.USER_CREDENTIALS, JSON.stringify(credentials));
+}
+
+// Load user credentials
+function loadUserCredentials() {
+    const credentials = localStorage.getItem(STORAGE_KEYS.USER_CREDENTIALS);
+    if (credentials) {
+        const parsed = JSON.parse(credentials);
+        // Check if credentials are not too old (optional: expire after 24 hours)
+        if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+            return parsed;
+        } else {
+            // Credentials expired, remove them
+            localStorage.removeItem(STORAGE_KEYS.USER_CREDENTIALS);
+        }
+    }
+    return null;
+}
+
+// Clear user credentials
+function clearUserCredentials() {
+    localStorage.removeItem(STORAGE_KEYS.USER_CREDENTIALS);
+}
+
+// Save last room
+function saveLastRoom(roomId) {
+    sessionStorage.setItem(STORAGE_KEYS.LAST_ROOM, roomId);
+}
+
+// Load last room
+function loadLastRoom() {
+    return sessionStorage.getItem(STORAGE_KEYS.LAST_ROOM);
+}
+
+
+
+
 // // Storage keys
 // const STORAGE_KEYS = {
 //     USER_PREFERENCES: 'userPreferences',
@@ -46,10 +98,28 @@ let currentRoom = null;
 //     sessionStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
 // }
 
+// document.addEventListener('DOMContentLoaded', function() {
+//     // Remove cookie check and always show login
+//     showLoginTab();
+//     connectWebSocket();
+// });
+
+// Modified DOMContentLoaded handler
 document.addEventListener('DOMContentLoaded', function() {
-    // Remove cookie check and always show login
-    showLoginTab();
-    connectWebSocket();
+    // Check for saved credentials first
+    const credentials = loadUserCredentials();
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get('room');
+    
+    if (credentials) {
+        // We have saved credentials, connect and auto-login
+        connectWebSocket();
+        // Don't show login immediately, wait for auto-login
+    } else {
+        // No saved credentials, show login
+        showLoginTab();
+        connectWebSocket();
+    }
 });
 
 // DOM Elements
@@ -76,90 +146,216 @@ const registerForm = document.getElementById('registerForm');
 const tabBtns = document.querySelectorAll('.tab-btn');
 
 
-// Initialize WebSocket connection
+// // Initialize WebSocket connection
+// function connectWebSocket() {
+//   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+//   socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
+
+//   socket.onopen = () => {
+//       console.log('Connected to server');
+//   };
+
+  
+  
+// socket.onmessage = (event) => {
+//     const message = event.data;
+//     console.log('Received:', message);
+
+//     if (message.includes('Login successful')) {
+//         const username = document.getElementById('loginUsername').value;
+//         currentUser = { username: username };
+//         // Store user info in cookie
+//         // setCookie('username', username, 1); // Expires in 1 day
+//         showDashboard();
+//     } else if (message.includes('Registration successful')) {
+//         alert('Registration successful! Please login.');
+//         showLoginTab();
+//     } else if (message.includes('Available rooms:')) {
+//         const rooms = [];
+//         const lines = message.split('\n');
+//         for (let i = 1; i < lines.length; i++) {
+//             const line = lines[i];
+//             if (line.startsWith('-')) {
+//                 const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
+//                 if (match) {
+//                     rooms.push({ name: match[1], createdBy: match[2] });
+//                 }
+//             }
+//         }
+//         displayRooms(rooms);
+//     }
+//     else if (message.startsWith('ROOM_CREATED:')) {
+//         // Handle successful room creation
+//         const parts = message.split(':');
+//         const roomId = parts[1];
+//         const roomName = parts.slice(2).join(':').split('\n')[0]; // Get room name before any newlines
+        
+//         console.log('Room created:', roomId, roomName);
+        
+//         // Hide modal and reset form
+//         hideCreateRoomModal();
+//         document.getElementById('roomNameInput').value = '';
+        
+//         // Reset button state
+//         const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+//         submitBtn.disabled = false;
+//         submitBtn.textContent = 'Create Room';
+        
+//         // Update state and show room
+//         currentRoom = { id: roomId, name: roomName };
+//         showChatRoom(roomName);
+//     } else if (message.startsWith('ERROR:')) {
+//         // Handle errors
+//         alert(message);
+//         const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+//         submitBtn.disabled = false;
+//         submitBtn.textContent = 'Create Room';
+//     } else if (message.includes('=== Chat Room:')) {
+//         const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
+//         if (roomNameMatch) {
+//             currentRoom = { name: roomNameMatch[1] };
+//             showChatRoom(currentRoom.name);
+//         }
+//         addMessage(message);
+//     } else {
+//         addMessage(message);
+//     }
+// };
+
+
+//   socket.onclose = () => {
+//       console.log('Disconnected from server');
+//       setTimeout(connectWebSocket, 3000);
+//   };
+// }
+
+
+// Modified WebSocket connection with auto-login
 function connectWebSocket() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    socket = new WebSocket(`${protocol}//${window.location.hostname}:12345`);
 
-  socket.onopen = () => {
-      console.log('Connected to server');
-  };
+    socket.onopen = () => {
+        console.log('Connected to server');
+        
+        // Try to auto-login if credentials exist
+        const credentials = loadUserCredentials();
+        if (credentials && !currentUser) {
+            console.log('Auto-logging in...');
+            socket.send(`1.${credentials.username}.${credentials.password}`);
+        }
+    };
 
-  
-  
-socket.onmessage = (event) => {
-    const message = event.data;
-    console.log('Received:', message);
+    socket.onmessage = (event) => {
+        const message = event.data;
+        console.log('Received:', message);
 
-    if (message.includes('Login successful')) {
-        const username = document.getElementById('loginUsername').value;
-        currentUser = { username: username };
-        // Store user info in cookie
-        // setCookie('username', username, 1); // Expires in 1 day
-        showDashboard();
-    } else if (message.includes('Registration successful')) {
-        alert('Registration successful! Please login.');
-        showLoginTab();
-    } else if (message.includes('Available rooms:')) {
-        const rooms = [];
-        const lines = message.split('\n');
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.startsWith('-')) {
-                const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
-                if (match) {
-                    rooms.push({ name: match[1], createdBy: match[2] });
+        if (message.includes('Login successful')) {
+            const credentials = loadUserCredentials();
+            if (credentials) {
+                currentUser = { username: credentials.username };
+                console.log('Auto-login successful');
+                
+                // Check if we should restore a room or show dashboard
+                const urlParams = new URLSearchParams(window.location.search);
+                const roomId = urlParams.get('room');
+                
+                if (roomId) {
+                    // We're in a room, join it
+                    console.log('Rejoining room:', roomId);
+                    socket.send(`join:${roomId}`);
+                } else {
+                    // Show dashboard and load rooms
+                    showDashboard();
                 }
             }
+        } else if (message.includes('Registration successful')) {
+            alert('Registration successful! Please login.');
+            showLoginTab();
+        } else if (message.includes('Available rooms:')) {
+            const rooms = [];
+            const lines = message.split('\n');
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.startsWith('-')) {
+                    const match = line.match(/- (.+) \(created by user ID: (\d+)\)/);
+                    if (match) {
+                        rooms.push({ name: match[1], createdBy: match[2] });
+                    }
+                }
+            }
+            displayRooms(rooms);
+        } else if (message.startsWith('ROOM_CREATED:')) {
+            const parts = message.split(':');
+            const roomId = parts[1];
+            const roomName = parts.slice(2).join(':').split('\n')[0];
+            
+            console.log('Room created:', roomId, roomName);
+            hideCreateRoomModal();
+            document.getElementById('roomNameInput').value = '';
+            
+            const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Create Room';
+            
+            currentRoom = { id: roomId, name: roomName };
+            saveLastRoom(roomId);
+            showChatRoom(roomName);
+        } else if (message.includes('=== Chat Room:')) {
+            const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
+            if (roomNameMatch) {
+                currentRoom = { name: roomNameMatch[1] };
+                saveLastRoom(roomNameMatch[1]);
+                showChatRoom(currentRoom.name);
+            }
+            addMessage(message);
+        } else if (message.startsWith('ERROR:')) {
+            alert(message);
+            const submitBtn = createRoomForm.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Create Room';
+            }
+        } else {
+            addMessage(message);
         }
-        displayRooms(rooms);
-    }
-    else if (message.startsWith('ROOM_CREATED:')) {
-        // Handle successful room creation
-        const parts = message.split(':');
-        const roomId = parts[1];
-        const roomName = parts.slice(2).join(':').split('\n')[0]; // Get room name before any newlines
-        
-        console.log('Room created:', roomId, roomName);
-        
-        // Hide modal and reset form
-        hideCreateRoomModal();
-        document.getElementById('roomNameInput').value = '';
-        
-        // Reset button state
-        const submitBtn = createRoomForm.querySelector('button[type="submit"]');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Room';
-        
-        // Update state and show room
-        currentRoom = { id: roomId, name: roomName };
-        showChatRoom(roomName);
-    } else if (message.startsWith('ERROR:')) {
-        // Handle errors
-        alert(message);
-        const submitBtn = createRoomForm.querySelector('button[type="submit"]');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Create Room';
-    } else if (message.includes('=== Chat Room:')) {
-        const roomNameMatch = message.match(/=== Chat Room: (.+) ===/);
-        if (roomNameMatch) {
-            currentRoom = { name: roomNameMatch[1] };
-            showChatRoom(currentRoom.name);
-        }
-        addMessage(message);
-    } else {
-        addMessage(message);
-    }
-};
+    };
 
-
-  socket.onclose = () => {
-      console.log('Disconnected from server');
-      setTimeout(connectWebSocket, 3000);
-  };
+    socket.onclose = () => {
+        console.log('Disconnected from server');
+        setTimeout(connectWebSocket, 3000);
+    };
 }
 
-// Auth functions
+// // Auth functions
+// loginForm.addEventListener('submit', async (e) => {
+//     e.preventDefault();
+//     const username = document.getElementById('loginUsername').value;
+//     const password = document.getElementById('loginPassword').value;
+    
+//     try {
+//         // Try REST API login first
+//         const response = await AuthAPI.login(username, password);
+        
+//         // If REST API login successful
+//         if (response.success) {
+//             // Set current user
+//             currentUser = { username: username };
+            
+//             // Send WebSocket login
+//             socket.send(`1.${username}.${password}`);
+            
+//             // Show dashboard
+//             showDashboard();
+//         }
+//     } catch (error) {
+//         console.error('Login failed:', error);
+//         // Fallback to WebSocket-only login
+//         socket.send(`1.${username}.${password}`);
+//     }
+// });
+
+// Modified login form handler
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('loginUsername').value;
@@ -169,28 +365,26 @@ loginForm.addEventListener('submit', async (e) => {
         // Try REST API login first
         const response = await AuthAPI.login(username, password);
         
-        // If REST API login successful
         if (response.success) {
-            // Set current user
             currentUser = { username: username };
-            
-            // Send WebSocket login
+            saveUserCredentials(username, password); // Save credentials
             socket.send(`1.${username}.${password}`);
-            
-            // Show dashboard
             showDashboard();
         }
     } catch (error) {
         console.error('Login failed:', error);
         // Fallback to WebSocket-only login
         socket.send(`1.${username}.${password}`);
+        // Save credentials on successful WebSocket login too
+        saveUserCredentials(username, password);
     }
 });
+
 
 registerForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const username = document.getElementById('registerUsername').value;
-  const password = document.getElementById('registerPassword').value;
+  const password = document.getElementById('gisterPassword').value;
   socket.send(`2.${username}.${password}`);
 });
 
@@ -244,19 +438,20 @@ createRoomForm.addEventListener('submit', (e) => {
     }
 });
 // Navigation
-logoutBtn.addEventListener('click', () => {
-    socket.close();
-    currentUser = null;
-    currentRoom = null;
-    showLoginTab();
-    authContainer.classList.remove('hidden');
-    dashboardContainer.classList.add('hidden');
-    chatContainer.classList.add('hidden');
-    connectWebSocket();
-});
+// logoutBtn.addEventListener('click', () => {
+//     socket.close();
+//     currentUser = null;
+//     currentRoom = null;
+//     showLoginTab();
+//     authContainer.classList.remove('hidden');
+//     dashboardContainer.classList.add('hidden');
+//     chatContainer.classList.add('hidden');
+//     connectWebSocket();
+// });
 
 leaveRoomBtn.addEventListener('click', () => {
   socket.send('/exit');
+  history.back();
   currentRoom = null;
   showDashboard();
 });
@@ -301,65 +496,6 @@ messageForm.addEventListener('submit', (e) => {
   }
 });
 
-// function addMessage(message) {
-//     if (message.includes('Welcome to GTR Chat Server!') ||
-//         message.includes('Joined room:') ||
-//         message.includes('=== Chat Room:') ||
-//         message.includes('You joined at:') ||
-//         message.includes('Type \'/exit\' to leave the room') ||
-//         message.includes('--- Chat History') ||
-//         message.startsWith('[SYSTEM]')) {
-//         return;
-//     }
-
-//     if (!message.includes(':')) {
-//         return;
-//     }
-
-//     const messageElement = document.createElement('div');
-//     messageElement.className = 'message other';
-
-//     let cleanMessage = message
-//         .replace(/\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\]/g, '')
-//         .replace(/[^\x20-\x7E]/g, '')
-//         .trim();
-
-//     if (cleanMessage) {
-//         const messageWrapper = document.createElement('div');
-//         messageWrapper.className = 'message-wrapper';
-
-//         const personAvatar = document.createElement('div');
-//         personAvatar.className = 'person-avatar';
-
-//         const messageContent = document.createElement('div');
-//         messageContent.className = 'message-content';
-//         messageContent.textContent = cleanMessage;
-
-//         messageWrapper.appendChild(personAvatar);
-//         messageWrapper.appendChild(messageContent);
-//         messageElement.appendChild(messageWrapper);
-
-//         messagesContainer.appendChild(messageElement);
-//         messagesContainer.scrollTop = messagesContainer.scrollHeight;
-//     }
-
-//     // Store message in session storage
-//     if (currentRoom) {
-//         const chatHistory = JSON.parse(
-//             sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`) || '[]'
-//         );
-//         chatHistory.push({
-//             message,
-//             timestamp: new Date().toISOString()
-//         });
-//         sessionStorage.setItem(
-//             `${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`,
-//             JSON.stringify(chatHistory)
-//         );
-//     }
-// }
-
-
 function addMessage(message) {
     if (message.includes('Welcome to GTR Chat Server!') ||
         message.includes('Joined room:') ||
@@ -401,28 +537,71 @@ function addMessage(message) {
         messagesContainer.appendChild(messageElement);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
+
+    // Store message in session storage
+    if (currentRoom) {
+        const chatHistory = JSON.parse(
+            sessionStorage.getItem(`${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`) || '[]'
+        );
+        chatHistory.push({
+            message,
+            timestamp: new Date().toISOString()
+        });
+        sessionStorage.setItem(
+            `${STORAGE_KEYS.CHAT_HISTORY}_${currentRoom.name}`,
+            JSON.stringify(chatHistory)
+        );
+    }
 }
 
-// UI functions
-function showDashboard() {
-  authContainer.classList.add('hidden');
-  dashboardContainer.classList.remove('hidden');
-  chatContainer.classList.add('hidden');
-  usernameDisplay.textContent = currentUser.username;
-  socket.send('3');
-  loadUserTodos();
 
-  const dashboardHeader = document.querySelector('.dashboard-header');
-  if (!document.querySelector('.race-data-btn')) {
-      const raceDataBtn = document.createElement('button');
-      raceDataBtn.className = 'btn btn-outline race-data-btn';
-      raceDataBtn.textContent = 'VIEW RACE DATA';
-      raceDataBtn.onclick = function() {
-          console.log('Dashboard race data button clicked'); // Debug log
-          showRaceData();
-      };
-      dashboardHeader.appendChild(raceDataBtn);
-  }
+
+
+// UI functions
+// function showDashboard() {
+//   authContainer.classList.add('hidden');
+//   dashboardContainer.classList.remove('hidden');
+//   chatContainer.classList.add('hidden');
+//   usernameDisplay.textContent = currentUser.username;
+//   socket.send('3');
+//   loadUserTodos();
+
+//   const dashboardHeader = document.querySelector('.dashboard-header');
+//   if (!document.querySelector('.race-data-btn')) {
+//       const raceDataBtn = document.createElement('button');
+//       raceDataBtn.className = 'btn btn-outline race-data-btn';
+//       raceDataBtn.textContent = 'VIEW RACE DATA';
+//       raceDataBtn.onclick = function() {
+//           console.log('Dashboard race data button clicked'); // Debug log
+//           showRaceData();
+//       };
+//       dashboardHeader.appendChild(raceDataBtn);
+//   }
+// }
+
+// Modified showDashboard function
+function showDashboard() {
+    authContainer.classList.add('hidden');
+    dashboardContainer.classList.remove('hidden');
+    chatContainer.classList.add('hidden');
+    
+    if (currentUser) {
+        usernameDisplay.textContent = currentUser.username;
+        // Request rooms list
+        socket.send('3');
+    }
+    
+    // Add race data button if it doesn't exist
+    const dashboardHeader = document.querySelector('.dashboard-header');
+    if (!document.querySelector('.race-data-btn')) {
+        const raceDataBtn = document.createElement('button');
+        raceDataBtn.className = 'btn btn-outline race-data-btn';
+        raceDataBtn.textContent = 'VIEW RACE DATA';
+        raceDataBtn.onclick = function() {
+            showRaceData();
+        };
+        dashboardHeader.appendChild(raceDataBtn);
+    }
 }
 
 function showLoginTab() {
@@ -450,21 +629,39 @@ function showLoginTab() {
 //     initializeChatRoom(roomId);
 // }
 
-function showChatRoom(roomId) {
-    // Change the URL to use only the room ID
-    const state = {
-        roomId: roomId
-    };
+// function showChatRoom(roomId) {
+//     // Change the URL to use only the room ID
+//     const state = {
+//         roomId: roomId
+//     };
     
-    // Update URL to only include room ID
+//     // Update URL to only include room ID
+//     history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+    
+//     // Show chat container and hide others
+//     document.getElementById('authContainer').classList.add('hidden');
+//     document.getElementById('dashboardContainer').classList.add('hidden');
+//     document.getElementById('chatContainer').classList.remove('hidden');
+    
+//     // Initialize chat room
+//     initializeChatRoom(roomId);
+// }
+
+// Modified showChatRoom function
+function showChatRoom(roomId) {
+    const state = { roomId: roomId };
     history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
     
-    // Show chat container and hide others
     document.getElementById('authContainer').classList.add('hidden');
     document.getElementById('dashboardContainer').classList.add('hidden');
     document.getElementById('chatContainer').classList.remove('hidden');
     
-    // Initialize chat room
+    // Update room name display
+    document.getElementById('roomName').textContent = roomId;
+    
+    // Save current room
+    saveLastRoom(roomId);
+    
     initializeChatRoom(roomId);
 }
 
@@ -685,5 +882,24 @@ function initializeChatRoom(roomId) {
 
 // Racing World button handler
 document.getElementById('racingWorldBtn').addEventListener('click', () => {
-    window.location.href = 'racingWorld.jsp';
 });
+
+
+// Modified logout function
+function logout() {
+    socket.close();
+    currentUser = null;
+    currentRoom = null;
+    clearUserCredentials(); // Clear saved credentials
+    sessionStorage.clear(); // Clear session data
+    showLoginTab();
+    authContainer.classList.remove('hidden');
+    dashboardContainer.classList.add('hidden');
+    chatContainer.classList.add('hidden');
+    
+    // Update URL to base
+    history.pushState(null, '', '/Ryn/index.html');
+    connectWebSocket();
+}
+
+logoutBtn.addEventListener('click', logout);

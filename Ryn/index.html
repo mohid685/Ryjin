@@ -841,21 +841,39 @@
 // }
 
 
-function showChatRoom(roomId) {
-    // Change the URL to use only the room ID
-    const state = {
-        roomId: roomId
-    };
+// function showChatRoom(roomId) {
+//     // Change the URL to use only the room ID
+//     const state = {
+//         roomId: roomId
+//     };
     
-    // Update URL to only include room ID
+//     // Update URL to only include room ID
+//     history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
+    
+//     // Show chat container and hide others
+//     document.getElementById('authContainer').classList.add('hidden');
+//     document.getElementById('dashboardContainer').classList.add('hidden');
+//     document.getElementById('chatContainer').classList.remove('hidden');
+    
+//     // Initialize chat room
+//     initializeChatRoom(roomId);
+// }
+
+// Modified showChatRoom function
+function showChatRoom(roomId) {
+    const state = { roomId: roomId };
     history.pushState(state, '', `/Ryn/index.html?room=${roomId}`);
     
-    // Show chat container and hide others
     document.getElementById('authContainer').classList.add('hidden');
     document.getElementById('dashboardContainer').classList.add('hidden');
     document.getElementById('chatContainer').classList.remove('hidden');
     
-    // Initialize chat room
+    // Update room name display
+    document.getElementById('roomName').textContent = roomId;
+    
+    // Save current room
+    saveLastRoom(roomId);
+    
     initializeChatRoom(roomId);
 }
 
